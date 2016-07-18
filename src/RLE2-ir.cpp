@@ -511,23 +511,6 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 
 }
 
-//uint64_t RLE2::nextDelta(int64_t *result, uint64_t offset){
-
-//	 else {
-//
-//	    if (deltaBase < 0) {
-//	      for ( ; pos < end; ++pos) {
-//	        prevValue = result[pos] = prevValue - result[pos];
-//	      }
-//	    } else {
-//	      for ( ; pos < end; ++pos) {
-//	        prevValue = result[pos] = prevValue + result[pos];
-//	      }
-//	    }
-//	  }
-//	  return runLength;
-//}
-
 
 Function *genfunc_nextPatched(LlvmCodeGen *gen, EncodingInfo info){
 

@@ -9,15 +9,13 @@
 #include <iostream>
 #include <stdlib.h>
 #include <memory>
-#include "Reader.hh"
-#include "util.hh"
-#include "config.hh"
-#include "processColumn.hh"
 #include "llvm-codegen.h"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include "codegen_function.hh"
-#include "RLE2.hh"
+#include "../include/config.h"
+#include "../include/Reader.h"
+#include "../include/RLE2.h"
+#include "../include/util.h"
 #include "functions-ir.h"
 
 using namespace std;
@@ -44,54 +42,97 @@ uint64_t genfunc(){
 }
 }
 
-int main1(int argc, char **argv) {
 
-	if(argc>1)
-		orc::type = atoi(argv[1]);
+int  main2(int argc, char **args){
+	ObjectPool pool;
+	LlvmCodeGen *gen;
+	bool local = true;
+	if(local){
+		orc::LlvmCodeGen::LoadFromFile(&pool,"/home/teng/orcir/testutil_opt.ll","testutil",&gen);
+	}else{
+		gen = new LlvmCodeGen(&pool,"testutil");
+
+		ColumnInfo cinfo;
+		cinfo.hasdelta = true;
+		cinfo.hasdirect = true;
+		cinfo.haspatched = false;
+		cinfo.hasrepeat = true;
+
+		EncodingInfo info;
+		info.issigned = false;
+		info.isbitwidthfixed = false;
+		info.bitwidth = 24;
+
+		cinfo.directInfo = info;
+		cinfo.repeatInfo = info;
+		cinfo.deltaInfo = info;
+		genfunc_next(gen, cinfo);
+		gen->EnableOptimizations(true);
+		gen->FinalizeModule();
+	}
+
+
+
+	uint64_t funcaddr = gen->GetFunction("nextFunc");
+	int64_t (*next)(char *, int64_t *, uint64_t &, uint64_t) = (int64_t (*)(char *, int64_t*, uint64_t &, uint64_t))funcaddr;
+
+	proto::Stream_Kind kind = proto::Stream_Kind_DATA;
+
+	string filepath = "/home/teng/lineitem_orc_partkey/000000_0";
+	filepath = "/home/teng/testrepeat/000000_0";
+	filepath = "/home/teng/testdelta/000000_0";
+	filepath = "/home/teng/lineitem_orc_comment/000000_0";kind = proto::Stream_Kind_LENGTH;
 	ReaderOptions opts;
-	std::unique_ptr<orc::Reader> reader = orc::createReader(orc::readLocalFile("/home/teng/lineitem_orc/000000_0"),opts);
-	char *data;
-	uint64_t datasize;
-	//reader->readdata(2,&data,&datasize);
+	std::unique_ptr<orc::Reader> reader = orc::createReader(orc::readLocalFile(filepath),opts);
 
-	std::vector<ColumnPattern> patterns = readPattern(data,datasize);
+	for(int i=0;i<reader->getStripeSize();i++){
+		char *data;
+		uint64_t datasize;
 
-	switch(type){
-	case 1:
-		processAddr = orc::genfunc();
-		break;
-	case 2:
-	    processAddr = (uint64_t)orc::readDirect_general;
-	    break;
-	case 3:
-	    processAddr = (uint64_t)orc::readDirect_spec;
-		break;
-	}
-	void (*process)(char *, int64_t *, uint64_t &, uint64_t) = (void (*)(char *, int64_t *, uint64_t &, uint64_t))processAddr;
+		proto::StripeInformation sinfo = reader->getStrips(i);
+		uint64_t nrows = sinfo.numberofrows();
+		int64_t *result = new int64_t[512];
+		uint64_t resultindex = 0, index=0;
+		reader->readdata(i,1,kind, &data,&datasize);
 
-	uint64_t index = 0;
-	uint64_t parsed = 0;
 
-	int64_t result[512];
+		//cout<<static_cast<uint32_t>(data[0])<<" "<<static_cast<uint32_t>(data[1])<<std::endl;
+		int count[2];
+		count[0] = 0;
+		count[1] = 0;
 
-	for(ColumnPattern pattern:patterns){
-		for(int i=0;i<pattern.repeated;i++){
-			process(data,result,index,pattern.runLength);
-			parsed += pattern.runLength;
+		while(index<datasize){
+			resultindex = 0;
+			uint64_t offset = 0;
+			uint64_t runlength;
+			runlength = next(data,result,index,resultindex);
+
+//			if(runlength!=512)
+			//cout<<runlength<<" "<<index<<endl;
+//			for(int r=0;r<runlength;r++){
+//				cout<<result[r]<<endl;
+//			}
 		}
+		//cout<<count[0]<<" "<<count[1]<<endl;
+
+		delete data;
+		delete result;
+
+		//cout<<datasize<<" "<<string(data,4)<<endl;
 	}
 
-	cout<<parsed<<""<<endl;
-	if(data)
-		delete data;
 	return 0;
 }
 
 int main(int argc, char **argv){
 	ReaderOptions opts;
-	std::unique_ptr<orc::Reader> reader = orc::createReader(orc::readLocalFile("/home/teng/lineitem_orc_comment/000000_0"),opts);
 
-	proto::Stream_Kind kind = proto::Stream_Kind_LENGTH;
+	string file = "/home/teng/lineitem_orc_partkey/000000_0";
+	proto::Stream_Kind kind = proto::Stream_Kind_DATA;
+	file = "/home/teng/lineitem_orc_comment/000000_0";kind = proto::Stream_Kind_LENGTH;
+
+	std::unique_ptr<orc::Reader> reader = orc::createReader(orc::readLocalFile(file),opts);
+	ColumnInfo info;
 	for(int i=0;i<reader->getStripeSize();i++){
 		char *data;
 		uint64_t datasize;
@@ -104,12 +145,14 @@ int main(int argc, char **argv){
 		//cout<<datasize<<" "<<string(data,4)<<endl;
 
 		RLE2 *rle = new RLE2(data, datasize, kind==proto::Stream_Kind_DATA);
+		rle->getInfo(info);
+		//rle->read(length);
 
-		rle->read(length);
-
-		for(int t=0;t<nrows;t++){
-			cout<<length[t]<<endl;
-		}
+//		rle->read(length);
+//
+//		for(int t=0;t<nrows;t++){
+//			cout<<length[t]<<endl;
+//		}
 //
 //		char *strdata;
 //		uint64_t strdatasize;
@@ -122,6 +165,10 @@ int main(int argc, char **argv){
 		delete length;
 
 	}
+	cout<<info.hasrepeat<<" "<<info.repeatInfo.issigned<<" "<<info.repeatInfo.isbitwidthfixed<<" "<<info.repeatInfo.bitwidth<<endl;
+	cout<<info.hasdirect<<" "<<info.directInfo.issigned<<" "<<info.directInfo.isbitwidthfixed<<" "<<info.directInfo.bitwidth<<endl;
+	cout<<info.hasdelta<<" "<<info.deltaInfo.issigned<<" "<<info.deltaInfo.isbitwidthfixed<<" "<<info.deltaInfo.bitwidth<<endl;
+
 
 	return 0;
 }

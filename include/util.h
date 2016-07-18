@@ -5,8 +5,8 @@
  *      Author: teng
  */
 
-#ifndef INCLUDE_UTIL_HH_
-#define INCLUDE_UTIL_HH_
+#ifndef INCLUDE_UTIL_H_
+#define INCLUDE_UTIL_H_
 
 #include <stdint.h>
 namespace orc{
@@ -69,4 +69,4 @@ enum TypeKind {
   };
 
 }
-#endif /* INCLUDE_UTIL_HH_ */
+#endif /* INCLUDE_UTIL_H_ */

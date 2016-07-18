@@ -5,10 +5,12 @@
  *      Author: teng
  */
 
-#include "util.hh"
-#include "RLE2.hh"
+#include "../include/RLE2.h"
+
 #include <stdint.h>
 #include <iostream>
+
+#include "../include/util.h"
 #define MIN_REPEAT 3
 
 namespace orc{
@@ -83,62 +85,6 @@ uint64_t RLE2::readLongs(int64_t *result, uint64_t offset, uint64_t len, uint64_
   }
 
   return len;
-}
-
-
-void readDirect_spec(char *data, int64_t *result, uint64_t &index, uint64_t runlength){
-
-	index += 2;
-	uint64_t resultindex = 0;
-	for(int tt=0;tt<runlength;tt++){
-
-		uint64_t rawresult = 0;
-
-		rawresult |= data[index++]&0xff;
-		rawresult <<= 8;
-		rawresult |= data[index++]&0xff;
-		rawresult <<= 8;
-		rawresult |= data[index++]&0xff;
-
-		result[resultindex++] = unZigZag(rawresult);
-	}
-	//cout<<runLength<<endl;
-}
-
-void readDirect_general(char *data, int64_t *result, uint64_t &index, uint64_t runlength){
-
-	char firstbyte = data[index++];
-	char secondbyte = data[index++];
-	uint32_t  bitSize = decodeBitWidth((unsigned char)((firstbyte >> 1) & 0x1f));
-	uint64_t runLength = static_cast<uint64_t>(firstbyte & 0x01) << 8;
-	runLength |= (unsigned char)secondbyte;
-	runLength += 1;
-	char curByte;
-	uint32_t bitsLeft = 0;
-	uint64_t resultindex = 0;
-	for(int tt=0;tt<runLength;tt++){
-		uint64_t rawresult = 0;
-		uint64_t bitsLeftToRead = bitSize;
-		if(bitsLeft==0){
-		    curByte = data[index++];
-		    bitsLeft = 8;
-		}
-		while (bitsLeftToRead > bitsLeft)
-		{
-			rawresult <<= bitsLeft;
-			rawresult |= curByte & ((1 << bitsLeft) - 1);
-		    bitsLeftToRead -= bitsLeft;
-		    curByte = data[index++];
-		    bitsLeft = 8;
-		}
-		//handle the left over bits
-		if (bitsLeftToRead > 0) {
-			rawresult <<= bitsLeftToRead;
-		    bitsLeft -= static_cast<uint32_t>(bitsLeftToRead);
-		    rawresult |= (curByte >> bitsLeft) & ((1 << bitsLeftToRead) - 1);
-		}
-		result[resultindex++] = unZigZag(rawresult);
-	}
 }
 
 
@@ -366,7 +312,143 @@ void RLE2::read(int64_t *result) {
     }
   }
 
- //std::cout<<count[0]<<" "<<count[1]<<" "<<count[2]<<" "<<count[3]<<std::endl;
+ std::cout<<count[0]<<" "<<count[1]<<" "<<count[2]<<" "<<count[3]<<std::endl;
+
+}
+
+void RLE2::processRepeat(EncodingInfo &info){
+
+	char firstByte = data[index++];
+	uint64_t byteSize = (firstByte >> 3) & 0x07;
+	byteSize += 1;
+	index += byteSize;
+	if(info.bitwidth<0){
+		info.isbitwidthfixed = true;
+		info.bitwidth = byteSize;
+	}
+	if(info.isbitwidthfixed && info.bitwidth!=byteSize){
+		info.isbitwidthfixed = false;
+	}
+}
+
+void RLE2::processDelta(EncodingInfo &info){
+
+	char firstByte = data[index++];
+	// extract the number of fixed bits
+	unsigned char fbo = (firstByte >> 1) & 0x1f;
+	uint64_t bitSize = 0;
+	uint64_t runLength;
+	if (fbo != 0) {
+		 bitSize = decodeBitWidth(fbo);
+	}
+
+	// extract the run length
+	runLength = static_cast<uint64_t>(firstByte & 0x01) << 8;
+	runLength |= data[index++];
+	runLength += 1; // account for first value
+
+	// read the first value stored as vint
+
+	int pos = 1;
+	char b;
+	do{
+		b = data[index++];
+	}while(b>0x80);
+	do{
+		b = data[index++];
+	}while(b>0x80);
+	if (bitSize != 0){
+		if (pos < runLength) {
+		  pos++;
+		}
+		uint64_t remaining = runLength - pos;
+		index += (remaining*bitSize)/8;
+		if((remaining*bitSize)%8!=0){
+			index++;
+		}
+	}
+	if(info.bitwidth<0){
+		info.isbitwidthfixed = true;
+		info.bitwidth = bitSize;
+	}
+	if(info.isbitwidthfixed && info.bitwidth != bitSize){
+		info.isbitwidthfixed = false;
+	}
+}
+
+void RLE2::processDirect(EncodingInfo &info){
+
+
+	char firstbyte = data[index++];
+	char secondbyte = data[index++];
+	uint32_t bitSize = decodeBitWidth((unsigned char)((firstbyte >> 1) & 0x1f));
+	uint64_t runLength = static_cast<uint64_t>(firstbyte & 0x01) << 8;
+	runLength |= (unsigned char)secondbyte;
+	runLength += 1;
+
+	index += (runLength*bitSize)/8;
+	if((runLength*bitSize)%8!=0){
+		index++;
+	}
+
+	if(info.bitwidth<0){
+		info.isbitwidthfixed = true;
+		info.bitwidth = bitSize;
+	}
+	if(info.isbitwidthfixed && info.bitwidth != bitSize){
+		info.isbitwidthfixed = false;
+	}
+
+
+}
+void RLE2::getInfo(ColumnInfo &cinfo){
+
+	uint64_t formerindex = this->index;
+	uint32_t bitSize;
+	uint64_t runLength;
+
+	while(index<datasize){
+		char firstByte = data[index];
+
+		EncodingType enc = static_cast<EncodingType>
+			((firstByte >> 6) & 0x03);
+
+		count[enc]++;
+		switch(static_cast<int64_t>(enc)) {
+		case SHORT_REPEAT:
+		  //printf("\nrepeat: %ld\n",count[enc]);
+		  cinfo.hasrepeat = true;
+		  processRepeat(cinfo.repeatInfo);
+		  break;
+		case DIRECT:
+		  //printf("\ndirect: %ld\n",count[enc]);
+		  cinfo.hasdirect = true;
+		  processDirect(cinfo.directInfo);
+		  break;
+		case PATCHED_BASE:
+			printf("patched: %ld\n",count[enc]);
+			exit(0);
+		  //nRead += nextPatched(data, offset, length, notNull);
+		  break;
+		case DELTA:
+			cinfo.hasdelta = true;
+			processDelta(cinfo.deltaInfo);
+		  break;
+		default:
+		  std::cerr<<"unknown encoding\n";
+		}
+	};
+	//std::cout<<count[0]<<" "<<count[1]<<" "<<count[2]<<" "<<count[3]<<std::endl;
+
+
+	this->index = formerindex;
+	if(cinfo.hasrepeat){
+		cinfo.repeatInfo.issigned = this->issigned;
+	}else if(cinfo.hasdirect){
+		cinfo.directInfo.issigned = this->issigned;
+	}else if(cinfo.hasdelta){
+		cinfo.deltaInfo.issigned = this->issigned;
+	}
 
 }
 

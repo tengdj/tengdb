@@ -5,8 +5,8 @@
  *      Author: teng
  */
 
-#include "../../include/util.hh"
 #include <stdint.h>
+#include "../../include/util.h"
 
 
 uint64_t readDirect_general(char *data, int64_t *result, uint64_t &index, uint64_t &resultindex){

@@ -30,9 +30,10 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
+
+#include "../include/config.h"
+#include "../include/util.h"
 #include "object-pool.h"
-#include "config.hh"
-#include "util.hh"
 
 using namespace std;
 using namespace orc;

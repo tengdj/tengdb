@@ -5,8 +5,8 @@
  *      Author: teng
  */
 
-#ifndef INCLUDE_CONFIG_HH_
-#define INCLUDE_CONFIG_HH_
+#ifndef INCLUDE_CONFIG_H_
+#define INCLUDE_CONFIG_H_
 
 #include <string>
 
@@ -20,4 +20,4 @@ extern uint64_t processAddr;
 
 
 
-#endif /* INCLUDE_CONFIG_HH_ */
+#endif /* INCLUDE_CONFIG_H_ */

@@ -8,8 +8,8 @@
 #ifndef READER_HH_
 #define READER_HH_
 
-#include "OrcFile.hh"
 #include "orc_proto.pb.h"
+#include "OrcFile.h"
 
 namespace orc{
 

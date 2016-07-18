@@ -5,9 +5,11 @@
  *      Author: teng
  */
 
-#ifndef INCLUDE_RLE2_HH_
-#define INCLUDE_RLE2_HH_
+#ifndef INCLUDE_RLE2_H_
+#define INCLUDE_RLE2_H_
 
+#include <memory>
+#include "ColumnInfo.h"
 namespace orc{
 
 class RLE2{
@@ -26,9 +28,16 @@ class RLE2{
 	uint64_t readVulong();
 	int64_t readVslong();
 	uint64_t readLongs(int64_t *result, uint64_t offset, uint64_t len, uint64_t fb);
+	void processDirect(EncodingInfo &Info);
+	void processDelta(EncodingInfo &Info);
+	void processRepeat(EncodingInfo &Info);
+
 public:
 	void read(int64_t *result);
 	RLE2(char *data, uint64_t datasize, bool issigned);
+	void getInfo(ColumnInfo &cinfo);
+
+
 	~RLE2();
 };
 
@@ -39,4 +48,4 @@ enum EncodingType { SHORT_REPEAT=0, DIRECT=1, PATCHED_BASE=2, DELTA=3 };
 
 
 }
-#endif /* INCLUDE_RLE2_HH_ */
+#endif /* INCLUDE_RLE2_H_ */

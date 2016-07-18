@@ -21,7 +21,7 @@ using namespace orc;
 
 Function *genFunc(LlvmCodeGen *gen,Function *callee,const string funcname){
 	IRBuilder<> builder(gen->context());
-	LlvmCodeGen::FnPrototype proto(gen,funcname,IntegerType::getInt32Ty(gen->context()));
+	LlvmCodeGen::FnPrototype proto(gen,funcname,IntegerType::getInt32Ty(gen->context()),false);
 	proto.AddArgument("left",IntegerType::getInt32Ty(gen->context()));
 	Value *args[1];
 	Function *func = proto.GeneratePrototype(&builder,&args[0]);

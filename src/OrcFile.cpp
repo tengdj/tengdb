@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include "OrcFile.hh"
+#include "../include/OrcFile.h"
 
 #include <errno.h>
 #include <fcntl.h>

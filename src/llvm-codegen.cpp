@@ -46,10 +46,10 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include "../include/config.h"
+#include "../include/util.h"
 
 #include "object-pool.h"
-#include "util.hh"
-#include "config.hh"
 
 using namespace llvm;
 using std::fstream;

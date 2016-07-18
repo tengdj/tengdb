@@ -5,7 +5,7 @@
  *      Author: teng
  */
 
-#include "config.hh"
+#include "../include/config.h"
 
 namespace orc{
 

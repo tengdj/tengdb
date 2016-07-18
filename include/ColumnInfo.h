@@ -13,16 +13,16 @@
 struct EncodingInfo{
 	bool issigned;
 	bool isbitwidthfixed;
-	uint64_t bitwidth;
+	int64_t bitwidth;
 	bool isrunlengthfixed;
-	uint64_t runlength;
+	int64_t runlength;
 
 	EncodingInfo(){
 		issigned = false;
 		isbitwidthfixed = false;
 		isrunlengthfixed = false;
-		bitwidth = 0;
-		runlength = 0;
+		bitwidth = -1;
+		runlength = -1;
 	}
 
 };
@@ -36,6 +36,13 @@ struct ColumnInfo{
 	EncodingInfo repeatInfo;
 	EncodingInfo patchedInfo;
 	EncodingInfo deltaInfo;
+
+	ColumnInfo(){
+		hasdirect = false;
+		hasrepeat = false;
+		haspatched = false;
+		hasdelta = false;
+	}
 
 };
 

@@ -1,13 +1,14 @@
 
-#include <memory>
-#include "OrcFile.hh"
-#include "Reader.hh"
+#include "../include/Reader.h"
 
+#include <memory>
 #include <iostream>
+
+#include "../include/config.h"
+#include "../include/OrcFile.h"
+#include "../include/RLE2.h"
+#include "../include/util.h"
 #include "orc_proto.pb.h"
-#include "util.hh"
-#include "config.hh"
-#include "RLE2.hh"
 
 using namespace std;
 

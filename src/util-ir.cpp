@@ -25,12 +25,11 @@
 #include <memory>
 #include <iostream>
 
+#include "../include/config.h"
+#include "../include/Reader.h"
+#include "../include/RLE2.h"
+#include "../include/util.h"
 #include "llvm-codegen.h"
-#include "Reader.hh"
-#include "util.hh"
-#include "config.hh"
-#include "codegen_function.hh"
-#include "RLE2.hh"
 #include "functions-ir.h"
 #include "ColumnInfo.h"
 
