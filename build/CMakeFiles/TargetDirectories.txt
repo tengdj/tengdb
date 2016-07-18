@@ -1,2 +1,0 @@
-/home/teng/myorc/build/src/CMakeFiles/main.dir
-/home/teng/myorc/build/src/CMakeFiles/testutil.dir
