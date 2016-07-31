@@ -385,6 +385,9 @@ class LlvmCodeGen {
   llvm::PointerType* ptr_type() { return ptr_type_; }
   llvm::Type* void_type() { return void_type_; }
   llvm::Type* i128_type() { return llvm::Type::getIntNTy(context(), 128); }
+  llvm::Type *double_ptr_type(){return llvm::Type::getDoublePtrTy(context(),0);};
+  llvm::Type *double_type(){return llvm::Type::getDoubleTy(context());};
+
   llvm::Type *int_type(int bit){return llvm::IntegerType::get(context(),bit);}
   llvm::Type *int_ptr_type(int bit){return llvm::PointerType::get(int_type(bit),0);}
   /// Fills 'functions' with all the functions that are defined in the module.

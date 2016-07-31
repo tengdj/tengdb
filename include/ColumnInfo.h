@@ -28,6 +28,9 @@ struct EncodingInfo{
 };
 struct ColumnInfo{
 
+	std::string colname;
+	bool updateAggregation;
+	bool saveResult;
 	bool hasdirect;
 	bool hasrepeat;
 	bool haspatched;
@@ -42,6 +45,8 @@ struct ColumnInfo{
 		hasrepeat = false;
 		haspatched = false;
 		hasdelta = false;
+		updateAggregation = false;
+		saveResult = false;
 	}
 
 };

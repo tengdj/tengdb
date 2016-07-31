@@ -520,7 +520,7 @@ Function *genfunc_nextPatched(LlvmCodeGen *gen, EncodingInfo info){
 
 Function *genfunc_next(LlvmCodeGen *gen, ColumnInfo info){
 	IRBuilder<> builder(gen->context());
-	LlvmCodeGen::FnPrototype proto(gen,"nextFunc",IntegerType::getInt64Ty(gen->context()),false);
+	LlvmCodeGen::FnPrototype proto(gen,"nextFunc_"+info.colname,IntegerType::getInt64Ty(gen->context()),false);
 	proto.AddArgument("data", gen->int_ptr_type(8));
 	proto.AddArgument("result", gen->int_ptr_type(64));
 	proto.AddArgument("index", gen->int_ptr_type(64));

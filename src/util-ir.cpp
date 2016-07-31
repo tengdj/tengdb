@@ -126,10 +126,8 @@ Function *genfunc_readLongBE(LlvmCodeGen *gen, EncodingInfo info){
 	Value *params[3];
 	Function *fn = proto.GeneratePrototype(&builder,&params[0]);
 
-	BasicBlock* label_while_cond = BasicBlock::Create(gen->context(), "while.cond",fn,0);
-	BasicBlock* label_while_body = BasicBlock::Create(gen->context(), "while.body",fn,0);
-	BasicBlock* label_while_end = BasicBlock::Create(gen->context(), "while.end",fn,0);
 
+	BasicBlock* label_end = BasicBlock::Create(gen->context(), "end",fn,0);
 
 	Value *data_addr = builder.CreateAlloca(gen->int_ptr_type(8));
 	builder.CreateAlignedStore(params[0],data_addr,8);
@@ -139,43 +137,72 @@ Function *genfunc_readLongBE(LlvmCodeGen *gen, EncodingInfo info){
 	builder.CreateAlignedStore(params[2],bytesize,8);
 
 	Value *ret = builder.CreateAlloca(gen->int_type(64));
-	Value *n = builder.CreateAlloca(gen->int_type(64));
 	builder.CreateStore(gen->getConstant(64,0),ret);
-	Value *bytesizevalue = builder.CreateAlignedLoad(bytesize,8);
-	//n = bytesize;
-	builder.CreateAlignedStore(bytesizevalue,n,8);
-	builder.CreateBr(label_while_cond);
-	//while(n > 0)
-	builder.SetInsertPoint(label_while_cond);
-	Value *nvalue = builder.CreateAlignedLoad(n,8);
-	Value *cmp = builder.CreateICmpUGT(nvalue,gen->getConstant(64,0));
-	builder.CreateCondBr(cmp,label_while_body,label_while_end);
 
-	builder.SetInsertPoint(label_while_body);
-	{
-		//n--;
-		Value *nvalue = builder.CreateAlignedLoad(n,8);
-		Value *dec_value = builder.CreateSub(nvalue,gen->getConstant(64,1));
-		builder.CreateAlignedStore(dec_value,n,8);
-		//data[index++]
-		Value *indexaddr = builder.CreateAlignedLoad(index_addr,8);
-		Value *indexvalue = builder.CreateAlignedLoad(indexaddr,8);
-		Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
-		builder.CreateAlignedStore(incvalue,indexaddr,8);
-		Value *dataaddr = builder.CreateAlignedLoad(data_addr,8);
-		Value *dataGEP = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue);
-		Value *datavalue = builder.CreateAlignedLoad(dataGEP,1);
-		Value *datavalue_64 = builder.CreateSExt(datavalue,gen->int_type(64));
-		//ret |= data[index]<<(n*8)
-		Value *ntimes8 = builder.CreateMul(dec_value,gen->getConstant(64,8));
-		Value *shiftvalue = builder.CreateShl(datavalue_64,ntimes8);
-		Value *retvalue = builder.CreateAlignedLoad(ret,8);
-		Value *orvalue = builder.CreateOr(retvalue,shiftvalue);
-		builder.CreateAlignedStore(orvalue,ret,8);
+	if(info.isbitwidthfixed){
+
+		int bytewidth = info.bitwidth;
+		while (bytewidth > 0) {
+		    bytewidth--;
+		    Value *indexaddr = builder.CreateAlignedLoad(index_addr,8);
+			Value *indexvalue = builder.CreateAlignedLoad(indexaddr,8);
+			Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
+			builder.CreateAlignedStore(incvalue,indexaddr,8);
+			Value *dataaddr = builder.CreateAlignedLoad(data_addr,8);
+			Value *dataGEP = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue);
+			Value *datavalue = builder.CreateAlignedLoad(dataGEP,1);
+			Value *datavalue_64 = builder.CreateSExt(datavalue,gen->int_type(64));
+			//ret |= data[index]<<(n*8)
+			Value *shiftvalue = builder.CreateShl(datavalue_64,gen->getConstant(64,bytewidth*8));
+			Value *retvalue = builder.CreateAlignedLoad(ret,8);
+			Value *orvalue = builder.CreateOr(retvalue,shiftvalue);
+			builder.CreateAlignedStore(orvalue,ret,8);
+		}
+		builder.CreateBr(label_end);
+
+
+	}else{
+		//n = bytesize;
+		Value *n = builder.CreateAlloca(gen->int_type(64));
+		Value *bytesizevalue = builder.CreateAlignedLoad(bytesize,8);
+		builder.CreateAlignedStore(bytesizevalue,n,8);
+
+		BasicBlock* label_while_cond = BasicBlock::Create(gen->context(), "while.cond",fn,0);
+		BasicBlock* label_while_body = BasicBlock::Create(gen->context(), "while.body",fn,0);
 		builder.CreateBr(label_while_cond);
+		//while(n > 0)
+		builder.SetInsertPoint(label_while_cond);
+		Value *nvalue = builder.CreateAlignedLoad(n,8);
+		Value *cmp = builder.CreateICmpUGT(nvalue,gen->getConstant(64,0));
+		builder.CreateCondBr(cmp,label_while_body,label_end);
+
+		builder.SetInsertPoint(label_while_body);
+		{
+			//n--;
+			Value *nvalue = builder.CreateAlignedLoad(n,8);
+			Value *dec_value = builder.CreateSub(nvalue,gen->getConstant(64,1));
+			builder.CreateAlignedStore(dec_value,n,8);
+			//data[index++]
+			Value *indexaddr = builder.CreateAlignedLoad(index_addr,8);
+			Value *indexvalue = builder.CreateAlignedLoad(indexaddr,8);
+			Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
+			builder.CreateAlignedStore(incvalue,indexaddr,8);
+			Value *dataaddr = builder.CreateAlignedLoad(data_addr,8);
+			Value *dataGEP = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue);
+			Value *datavalue = builder.CreateAlignedLoad(dataGEP,1);
+			Value *datavalue_64 = builder.CreateSExt(datavalue,gen->int_type(64));
+			//ret |= data[index]<<(n*8)
+			Value *ntimes8 = builder.CreateMul(dec_value,gen->getConstant(64,8));
+			Value *shiftvalue = builder.CreateShl(datavalue_64,ntimes8);
+			Value *retvalue = builder.CreateAlignedLoad(ret,8);
+			Value *orvalue = builder.CreateOr(retvalue,shiftvalue);
+			builder.CreateAlignedStore(orvalue,ret,8);
+			builder.CreateBr(label_while_cond);
+		}
 	}
 
-	builder.SetInsertPoint(label_while_end);
+
+	builder.SetInsertPoint(label_end);
 	//return ret;
 	Value *retvalue = builder.CreateAlignedLoad(ret,8);
 	builder.CreateRet(retvalue);
@@ -334,27 +361,31 @@ Function *genfunc_readLongs(LlvmCodeGen *gen, EncodingInfo info){
 	 * rawresult <<= 8;
 		rawresult |= data[index++]&0xff;
 	 * */
-	if(info.isbitwidthfixed){
-		for(int i=0;i<info.bitwidth/8;i++){
-			Value *shiftvalue;
-			if(i==0){
-				shiftvalue = builder.CreateAlignedLoad(rawresult,8);
-			}else{
-				Value *rawresultvalue = builder.CreateAlignedLoad(rawresult,8);
-				shiftvalue = builder.CreateShl(rawresultvalue,gen->getConstant(64,8));
-			}
-			Value *indexaddr = builder.CreateAlignedLoad(index_addr,8);
-			Value *indexvalue = builder.CreateAlignedLoad(indexaddr,8);
-			Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
-			builder.CreateAlignedStore(incvalue,indexaddr,8);
-			Value *dataaddr = builder.CreateAlignedLoad(data_addr,8);
-			Value *dataGEP = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue);
-			Value *datavalue = builder.CreateAlignedLoad(dataGEP,1);
+	if(info.isbitwidthfixed&&info.bitwidth>=8){
+		if(true){
+			for(int i=0;i<info.bitwidth/8;i++){
+				Value *shiftvalue;
+				if(i==0){
+					shiftvalue = builder.CreateAlignedLoad(rawresult,8);
+				}else{
+					Value *rawresultvalue = builder.CreateAlignedLoad(rawresult,8);
+					shiftvalue = builder.CreateShl(rawresultvalue,gen->getConstant(64,8));
+				}
+				Value *indexaddr = builder.CreateAlignedLoad(index_addr,8);
+				Value *indexvalue = builder.CreateAlignedLoad(indexaddr,8);
+				Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
+				builder.CreateAlignedStore(incvalue,indexaddr,8);
+				Value *dataaddr = builder.CreateAlignedLoad(data_addr,8);
+				Value *dataGEP = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue);
+				Value *datavalue = builder.CreateAlignedLoad(dataGEP,1);
 
-			Value *datavalue_64 = builder.CreateSExt(datavalue,gen->int_type(64));
-			Value *andvalue = builder.CreateAnd(datavalue_64,gen->getConstant(64,0xff));
-			Value *orvalue = builder.CreateOr(shiftvalue,andvalue);
-			builder.CreateAlignedStore(orvalue,rawresult,8);
+				Value *datavalue_64 = builder.CreateSExt(datavalue,gen->int_type(64));
+				Value *andvalue = builder.CreateAnd(datavalue_64,gen->getConstant(64,0xff));
+				Value *orvalue = builder.CreateOr(shiftvalue,andvalue);
+				builder.CreateAlignedStore(orvalue,rawresult,8);
+			}
+		}else{
+
 		}
 		builder.CreateBr(label_if_end_1);
 

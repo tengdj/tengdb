@@ -14,7 +14,7 @@ namespace orc{
 
 class RLE2{
 
-	char *data;
+	unsigned char *data;
 	uint64_t index;
 	uint64_t datasize;
 	bool issigned;
@@ -34,7 +34,7 @@ class RLE2{
 
 public:
 	void read(int64_t *result);
-	RLE2(char *data, uint64_t datasize, bool issigned);
+	RLE2(unsigned char *data, uint64_t datasize, bool issigned);
 	void getInfo(ColumnInfo &cinfo);
 
 

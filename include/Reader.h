@@ -24,7 +24,7 @@ class Reader{
 public:
 	Reader(std::unique_ptr<FileInputStream> stream,std::unique_ptr<orc::proto::PostScript> ps, std::unique_ptr<orc::proto::Footer> footer);
 	~Reader();
-	void readdata(int stripe, int column, proto::Stream_Kind kind, char **data, uint64_t *datasize);
+	void readdata(int stripe, int column, proto::Stream_Kind kind, unsigned char **data, uint64_t *datasize);
 	uint64_t rowsize();
 	proto::StripeInformation getStrips(int stripe);
 	size_t getStripeSize();

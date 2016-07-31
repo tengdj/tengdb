@@ -46,7 +46,7 @@ inline int64_t RLE2::readVslong() {
 uint64_t RLE2::readLongs(int64_t *result, uint64_t offset, uint64_t len, uint64_t fb) {
 
   uint64_t bitsLeft = 0;
-  char curByte;
+  unsigned char curByte;
   // TODO: unroll to improve performance
   for(uint64_t i = offset; i < (offset + len); i++) {
 
@@ -90,7 +90,7 @@ uint64_t RLE2::readLongs(int64_t *result, uint64_t offset, uint64_t len, uint64_
 
 uint64_t RLE2::nextShortRepeats(int64_t *result, uint64_t offset){
 
-	char firstByte = data[index++];
+	unsigned char firstByte = data[index++];
 	uint64_t byteSize = (firstByte >> 3) & 0x07;
 	byteSize += 1;
 
@@ -112,10 +112,10 @@ uint64_t RLE2::nextShortRepeats(int64_t *result, uint64_t offset){
 
 uint64_t RLE2::nextPatched(int64_t *result, uint64_t offset){
 
-	char firstbyte = data[index++];
-	char secondbyte = data[index++];
-	char thirdbyte = data[index++];
-	char fourthbyte = data[index++];
+	unsigned char firstbyte = data[index++];
+	unsigned char secondbyte = data[index++];
+	unsigned char thirdbyte = data[index++];
+	unsigned char fourthbyte = data[index++];
 
 	unsigned char fbo = (firstbyte >> 1) & 0x1f;
 	uint64_t bitSize = decodeBitWidth(fbo);
@@ -187,7 +187,7 @@ uint64_t RLE2::nextPatched(int64_t *result, uint64_t offset){
 
 uint64_t RLE2::nextDelta(int64_t *result, uint64_t offset){
 
-	char firstByte = data[index++];
+	unsigned char firstByte = data[index++];
 	// extract the number of fixed bits
 	unsigned char fbo = (firstByte >> 1) & 0x1f;
 	uint64_t bitSize = 0;
@@ -252,18 +252,18 @@ uint64_t RLE2::nextDelta(int64_t *result, uint64_t offset){
 
 uint64_t RLE2::nextDirect(int64_t *result, uint64_t offset){
 
-	char firstbyte = data[index++];
-	char secondbyte = data[index++];
-	uint32_t  bitSize = decodeBitWidth((unsigned char)((firstbyte >> 1) & 0x1f));
+	unsigned char firstbyte = data[index++];
+	unsigned char secondbyte = data[index++];
+	uint32_t  bitSize = decodeBitWidth(((firstbyte >> 1) & 0x1f));
 	uint64_t runLength = static_cast<uint64_t>(firstbyte & 0x01) << 8;
-	runLength |= (unsigned char)secondbyte;
+	runLength |= secondbyte;
 	runLength += 1;
 
 	readLongs(result, offset, runLength,bitSize);
 	return runLength;
 }
 
-RLE2::RLE2(char *data, uint64_t datasize, bool issigned):
+RLE2::RLE2(unsigned char *data, uint64_t datasize, bool issigned):
 		data(data),datasize(datasize),issigned(issigned){
 	index = 0;
 
@@ -284,7 +284,7 @@ void RLE2::read(int64_t *result) {
 
   while (index < datasize) {
 
-	char firstByte = data[index];
+	unsigned char firstByte = data[index];
 
     EncodingType enc = static_cast<EncodingType>
         ((firstByte >> 6) & 0x03);
@@ -318,7 +318,7 @@ void RLE2::read(int64_t *result) {
 
 void RLE2::processRepeat(EncodingInfo &info){
 
-	char firstByte = data[index++];
+	unsigned char firstByte = data[index++];
 	uint64_t byteSize = (firstByte >> 3) & 0x07;
 	byteSize += 1;
 	index += byteSize;
@@ -333,7 +333,7 @@ void RLE2::processRepeat(EncodingInfo &info){
 
 void RLE2::processDelta(EncodingInfo &info){
 
-	char firstByte = data[index++];
+	unsigned char firstByte = data[index++];
 	// extract the number of fixed bits
 	unsigned char fbo = (firstByte >> 1) & 0x1f;
 	uint64_t bitSize = 0;
@@ -350,7 +350,7 @@ void RLE2::processDelta(EncodingInfo &info){
 	// read the first value stored as vint
 
 	int pos = 1;
-	char b;
+	unsigned char b;
 	do{
 		b = data[index++];
 	}while(b>0x80);
@@ -379,11 +379,11 @@ void RLE2::processDelta(EncodingInfo &info){
 void RLE2::processDirect(EncodingInfo &info){
 
 
-	char firstbyte = data[index++];
-	char secondbyte = data[index++];
-	uint32_t bitSize = decodeBitWidth((unsigned char)((firstbyte >> 1) & 0x1f));
+	unsigned char firstbyte = data[index++];
+	unsigned char secondbyte = data[index++];
+	uint32_t bitSize = decodeBitWidth(((firstbyte >> 1) & 0x1f));
 	uint64_t runLength = static_cast<uint64_t>(firstbyte & 0x01) << 8;
-	runLength |= (unsigned char)secondbyte;
+	runLength |= secondbyte;
 	runLength += 1;
 
 	index += (runLength*bitSize)/8;
@@ -399,7 +399,6 @@ void RLE2::processDirect(EncodingInfo &info){
 		info.isbitwidthfixed = false;
 	}
 
-
 }
 void RLE2::getInfo(ColumnInfo &cinfo){
 
@@ -408,7 +407,7 @@ void RLE2::getInfo(ColumnInfo &cinfo){
 	uint64_t runLength;
 
 	while(index<datasize){
-		char firstByte = data[index];
+		unsigned char firstByte = data[index];
 
 		EncodingType enc = static_cast<EncodingType>
 			((firstByte >> 6) & 0x03);

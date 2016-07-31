@@ -66,7 +66,7 @@ uint64_t Reader::rowsize(){
 
 }
 
-void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, char **data, uint64_t *datasize){
+void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, unsigned char **data, uint64_t *datasize){
 
 	proto::StripeInformation sinfo = footer->stripes(stripe);
 	uint64_t footerStart = sinfo.offset()+sinfo.indexlength()+sinfo.datalength();
@@ -83,7 +83,7 @@ void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, char **da
 				stream.kind() == kind &&
 				stream.column() == static_cast<uint64_t>(column)) {
 			*datasize = stream.length();
-			*data = new char[*datasize];
+			*data = new unsigned char[*datasize];
 			this->stream->read(*data,*datasize,offset);
 			break;
 		}

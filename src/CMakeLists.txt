@@ -7,7 +7,7 @@ llvm_map_components_to_libnames(llvm_libs all)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${LLVM_CXX_FLAGS}")
 
 add_executable(main 
-		myorc.cpp 
+		Query1.cpp 
 		OrcFile.cpp 
 		Reader.cpp 
 		orc_proto.pb.cc 
@@ -16,6 +16,8 @@ add_executable(main
 		RLE2.cpp
 		RLE2-ir.cpp
 		util-ir.cpp
+		ColumnReader.cpp
+		ColumnReader-ir.cpp
 		)
 target_link_libraries(main libprotobuf.a ${llvm_libs})
 

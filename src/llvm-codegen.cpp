@@ -69,7 +69,7 @@ void LlvmCodeGen::InitializeLlvm() {
 
 LlvmCodeGen::LlvmCodeGen(ObjectPool* pool, const string& id) :
   id_(id),
-  optimizations_enabled_(false),
+  optimizations_enabled_(true),
   is_corrupt_(false),
   is_compiled_(false),
   context_(new llvm::LLVMContext()),
