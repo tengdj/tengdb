@@ -44,7 +44,6 @@ namespace llvm {
   class ConstantFolder;
   class ExecutionEngine;
   class Function;
-  class FunctionPassManager;
   class LLVMContext;
   class Module;
   class NoFolder;
@@ -137,6 +136,10 @@ class LlvmCodeGen {
 
   /// Turns on/off optimization passes
   void EnableOptimizations(bool enable);
+
+  void setOptimizationLevel(int level){
+	  optimizations_level_ = level;
+  }
 
   /// For debugging. Returns the IR that was generated.  If full_module, the
   /// entire module is dumped, including what was loaded from precompiled IR.
@@ -385,11 +388,14 @@ class LlvmCodeGen {
   llvm::PointerType* ptr_type() { return ptr_type_; }
   llvm::Type* void_type() { return void_type_; }
   llvm::Type* i128_type() { return llvm::Type::getIntNTy(context(), 128); }
-  llvm::Type *double_ptr_type(){return llvm::Type::getDoublePtrTy(context(),0);};
   llvm::Type *double_type(){return llvm::Type::getDoubleTy(context());};
+  llvm::Type *double_ptr_type(){return llvm::Type::getDoublePtrTy(context(),0);};
+  llvm::Type *double_ptr_ptr_type(){return llvm::PointerType::get(double_ptr_type(),0);};
 
   llvm::Type *int_type(int bit){return llvm::IntegerType::get(context(),bit);}
   llvm::Type *int_ptr_type(int bit){return llvm::PointerType::get(int_type(bit),0);}
+  llvm::Type *int_ptr_ptr_type(int bit){return llvm::PointerType::get(int_ptr_type(bit),0);}
+
   /// Fills 'functions' with all the functions that are defined in the module.
   /// Note: this does not include functions that are just declared
   void GetFunctions(std::vector<llvm::Function*>* functions);
@@ -452,6 +458,8 @@ private:
 
   /// whether or not optimizations are enabled
   bool optimizations_enabled_;
+
+  int optimizations_level_;
 
   /// If true, the module is corrupt and we cannot codegen this query.
   /// TODO: we could consider just removing the offending function and attempting to

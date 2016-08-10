@@ -270,9 +270,7 @@ RLE2::RLE2(unsigned char *data, uint64_t datasize, bool issigned):
 }
 
 RLE2::~RLE2(){
-	if(!data){
-		delete data;
-	}
+
 }
 
 

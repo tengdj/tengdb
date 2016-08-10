@@ -27,46 +27,13 @@ Reader::~Reader(){
 
 }
 
-
-/*
-	        	  EncodingType enc = static_cast<EncodingType>((data[index] >> 6) & 0x03);
-
-	        	  if(enc==DIRECT){
-		        	  parsed+= read	switch(type){
-	case 1:
-		processAddr = genfunc();
-		break;
-	case 2:
-	    processAddr = (uint64_t)readDirect_general;
-	    break;
-	case 3:
-	    processAddr = (uint64_t)readDirect_spec;
-		break;
-	}Direct(data,tresult,index,rcount);
-	        	  }else if(enc == SHORT_REPEAT){
-	        		  parsed += readShortRepeats(data, index);
-	        		  cout<<"short repeat\n";
-	        		  exit(0);
-	        	  }else if(enc == PATCHED_BASE){
-	        		  parsed += readPatched(data, index);
-	        		  cout<<"patched base\n";
-	        		  exit(0);
-	        	  }else if(enc == DELTA){
-	        		  parsed += readDelta(data, index);
-	        		  cout<<"delta\n";
-	        		  exit(0);
-	        	  }else{
-	        		  cerr<<"unknown encoding \n";
-	        		  exit(0);
-	        	  }
-*/
 uint64_t Reader::rowsize(){
 
 	return footer->numberofrows();
 
 }
 
-void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, unsigned char **data, uint64_t *datasize){
+void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, DataBuffer<unsigned char> &buf, uint64_t &datasize){
 
 	proto::StripeInformation sinfo = footer->stripes(stripe);
 	uint64_t footerStart = sinfo.offset()+sinfo.indexlength()+sinfo.datalength();
@@ -82,9 +49,11 @@ void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, unsigned 
 		if (stream.has_kind() &&
 				stream.kind() == kind &&
 				stream.column() == static_cast<uint64_t>(column)) {
-			*datasize = stream.length();
-			*data = new unsigned char[*datasize];
-			this->stream->read(*data,*datasize,offset);
+			datasize = stream.length();
+			if(buf.capacity()<datasize){
+				buf.resize(datasize);
+			}
+			this->stream->read(buf.data(),datasize,offset);
 			break;
 		}
 		offset += stream.length();

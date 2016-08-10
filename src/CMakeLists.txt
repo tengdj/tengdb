@@ -16,10 +16,11 @@ add_executable(main
 		RLE2.cpp
 		RLE2-ir.cpp
 		util-ir.cpp
-		ColumnReader.cpp
 		ColumnReader-ir.cpp
+		MemoryPool.cpp
 		)
-target_link_libraries(main libprotobuf.a ${llvm_libs})
+		#LLVMCore LLVMSupport LLVMMCJIT LLVMPasses LLVMX86CodeGen LLVMX86AsmParser
+target_link_libraries(main libprotobuf.so LLVMCore LLVMSupport LLVMMCJIT LLVMPasses LLVMX86CodeGen LLVMX86AsmParser)
 
 #add_executable(llvm llvm-codegen.cpp llvm-codegen-test.cpp config.cpp)
 #target_link_libraries(llvm ${llvm_libs})

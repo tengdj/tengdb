@@ -10,7 +10,7 @@
 namespace orc{
 
 	int type = 1;
-	std::string irpath = "/home/teng/orcir";
+	std::string irpath = "./";
 	uint64_t processAddr = 0;
 
 }

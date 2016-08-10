@@ -70,6 +70,7 @@ void LlvmCodeGen::InitializeLlvm() {
 LlvmCodeGen::LlvmCodeGen(ObjectPool* pool, const string& id) :
   id_(id),
   optimizations_enabled_(true),
+  optimizations_level_(3),
   is_corrupt_(false),
   is_compiled_(false),
   context_(new llvm::LLVMContext()),
@@ -99,20 +100,20 @@ unique_ptr<Module> LlvmCodeGen::LoadModuleFromFile(LlvmCodeGen* codegen, const s
 }
 
 int LlvmCodeGen::LinkModule(const string& file) {
-	//this file already been linked
-  if (linked_modules_.find(file) != linked_modules_.end()) return 1;
-
-  unique_ptr<Module> new_module = LoadModuleFromFile(this, file);
-  string error_msg;
-
-  bool error =
-      Linker::LinkModules(module_, new_module.release());
-  if (error) {
-    stringstream ss;
-    ss << "Problem linking " << file << " to main module: " << error_msg;
-    return 0;
-  }
-  linked_modules_.insert(file);
+//	//this file already been linked
+//  if (linked_modules_.find(file) != linked_modules_.end()) return 1;
+//
+//  unique_ptr<Module> new_module = LoadModuleFromFile(this, file);
+//  string error_msg;
+//
+//  bool error =
+//      Linker::linkModules(*module_, new_module);
+//  if (error) {
+//    stringstream ss;
+//    ss << "Problem linking " << file << " to main module: " << error_msg;
+//    return 0;
+//  }
+//  linked_modules_.insert(file);
   return 1;
 }
 
@@ -133,7 +134,7 @@ int LlvmCodeGen::Init() {
 #endif
 
   std::string errmessage;
-  	llvm::ExecutionEngine *ee =
+  llvm::ExecutionEngine *ee =
   			llvm::EngineBuilder(unique_ptr<Module>(module_))
   			.setOptLevel(opt_level)
   			.setErrorStr(&error_string_)
@@ -336,7 +337,7 @@ Function* LlvmCodeGen::FnPrototype::GeneratePrototype(
   for (Function::arg_iterator iter = fn->arg_begin();
       iter != fn->arg_end(); ++iter, ++idx) {
     iter->setName(args_[idx].name);
-    if (params != NULL) params[idx] = iter;
+    if (params != NULL) params[idx] = (Argument *)iter;
   }
 
   if (builder != NULL) {
@@ -380,6 +381,9 @@ Function* LlvmCodeGen::ReplaceCallSites(Function* caller, bool update_in_place,
       }
     }
 
+  if(!update_in_place){
+	  this->AddFunctionToJit(caller,(void**)caller);
+  }
   return caller;
 }
 
@@ -512,7 +516,7 @@ void LlvmCodeGen::OptimizeModule() {
   // 2 maps to -O2
   // TODO: should we switch to 3? (3 may not produce different IR than 2 while taking
   // longer, but we should check)
-  pass_builder.OptLevel = 3;
+  pass_builder.OptLevel = optimizations_level_;
   // Don't optimize for code size (this corresponds to -O2/-O3)
   pass_builder.SizeLevel = 0;
   pass_builder.Inliner = createFunctionInliningPass() ;
@@ -536,6 +540,12 @@ void LlvmCodeGen::OptimizeModule() {
   unique_ptr<legacy::FunctionPassManager> fn_pass_manager(new legacy::FunctionPassManager(module_));
   pass_builder.populateFunctionPassManager(*fn_pass_manager);
   fn_pass_manager->doInitialization();
+  fn_pass_manager->add(llvm::createInstructionCombiningPass());
+  fn_pass_manager->add(llvm::createReassociatePass());
+  fn_pass_manager->add(llvm::createGVNPass());
+  fn_pass_manager->add(llvm::createCFGSimplificationPass());
+  fn_pass_manager->add(llvm::createAggressiveDCEPass());
+  fn_pass_manager->add(llvm::createCFGSimplificationPass());
   for (Module::iterator it = module_->begin(), end = module_->end(); it != end ; ++it) {
     if (!it->isDeclaration()) fn_pass_manager->run(*it);
   }
@@ -598,7 +608,7 @@ void* LlvmCodeGen::JitFunction(Function* function) {
 void LlvmCodeGen::GetFunctions(vector<Function*>* functions) {
   Module::iterator fn_iter = module_->begin();
   while (fn_iter != module_->end()) {
-    Function* fn = fn_iter++;
+    Function* fn = (Function *)fn_iter++;
     if (!fn->empty()) functions->push_back(fn);
   }
 }
@@ -606,7 +616,7 @@ void LlvmCodeGen::GetFunctions(vector<Function*>* functions) {
 void LlvmCodeGen::GetSymbols(vector<string>* symbols) {
   Module::iterator fn_iter = module_->begin();
   while (fn_iter != module_->end()) {
-    Function* fn = fn_iter++;
+    Function* fn = (Function *)fn_iter++;
     if (!fn->empty()) symbols->push_back(fn->getName().str());
   }
 }
@@ -629,8 +639,9 @@ void LlvmCodeGen::ReplaceInstWithValue(Instruction* from, Value* to) {
 Argument* LlvmCodeGen::GetArgument(Function* fn, int i) {
   assert(i<=fn->arg_size());
   Function::arg_iterator iter = fn->arg_begin();
+  //inst_iterator iter = inst_begin(fn);
   for (int j = 0; j < i; ++j) ++iter;
-  return iter;
+  return (Argument*)iter;
 }
 
 Value* LlvmCodeGen::GetPtrTo(LlvmBuilder* builder, Value* v, const char* name) {

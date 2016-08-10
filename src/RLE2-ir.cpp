@@ -31,135 +31,133 @@ using namespace llvm;
 
 namespace orc{
 
+
+
+
 Function *genfunc_nextDirect(LlvmCodeGen *gen, EncodingInfo info){
+
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"nextDirect",IntegerType::getInt64Ty(gen->context()),false);
 	proto.AddArgument("data", gen->int_ptr_type(8));
-	proto.AddArgument("result", gen->int_ptr_type(64));
 	proto.AddArgument("index", gen->int_ptr_type(64));
 	proto.AddArgument("offset",gen->int_type(64));
+	proto.AddArgument("space", orc::MemSpace::getMemSpacePtr(gen));
+	proto.AddArgument("result", gen->int_ptr_type(64));
 
-	llvm::Value *params[4];
+
+	llvm::Value *params[5];
 	Function *fn = proto.GeneratePrototype(&builder,params);
 
-	Value *data_addr = builder.CreateAlloca(gen->int_ptr_type(8));
-	builder.CreateAlignedStore(params[0],data_addr,8);
-	Value *result_addr = builder.CreateAlloca(gen->int_ptr_type(64));
-	builder.CreateAlignedStore(params[1],result_addr,8);
-	Value *index_addr = builder.CreateAlloca(gen->int_ptr_type(64));
-	builder.CreateAlignedStore(params[2],index_addr,8);
-	Value *offset = builder.CreateAlloca(gen->int_type(64));
-	builder.CreateAlignedStore(params[3],offset,8);
+	Value *data_ptr = params[0];
+	Value *index_ptr = params[1];
+	Value *offset_value = params[2];
+	Value *space_ptr = params[3];
+	Value *result_ptr = params[4];
 
 
-	Value *indexaddr = builder.CreateAlignedLoad(index_addr,8);
-	Value *dataaddr = builder.CreateAlignedLoad(data_addr,8);
-	Value *resultaddr = builder.CreateAlignedLoad(result_addr,8);
-
+	Value *firstbyte_value;
+	Value *secondbyte_value;
 	//firstbyte = data[index++];
-	Value *indexvalue = builder.CreateAlignedLoad(indexaddr,8);
-	Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
-	builder.CreateAlignedStore(incvalue,indexaddr,8);
-	Value *dataGEP = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue);
-	Value *firstbytevalue = builder.CreateAlignedLoad(dataGEP,1);
-
 	//secondbyte = data[index++];
-	Value *indexvalue1 = builder.CreateAlignedLoad(indexaddr,8);
-	Value *incvalue1 = builder.CreateAdd(indexvalue1,gen->getConstant(64,1));
-	builder.CreateAlignedStore(incvalue1,indexaddr,8);
-	Value *dataGEP1 = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue1);
-	Value *secondbytevalue = builder.CreateAlignedLoad(dataGEP1,1);
+	{
+		Value *index_value = builder.CreateAlignedLoad(index_ptr,8);
 
-	Value *shiftvalue1 = builder.CreateAShr(firstbytevalue,gen->getConstant(8,1));
-	Value *andvalue1 = builder.CreateAnd(shiftvalue1,gen->getConstant(8,0x1f));
-	Value *andvalue_32 = builder.CreateSExt(andvalue1,gen->int_type(32));
-	Value *decodedvalue = builder.CreateCall(genfunc_decodeBitWidth(gen,info),andvalue_32);
-	Value *bitWidth_value = builder.CreateSExt(decodedvalue,gen->int_type(64));
+		Value *first_GEP = builder.CreateGEP(gen->int_type(8),data_ptr,index_value);
+		firstbyte_value = builder.CreateAlignedLoad(first_GEP,1);
+		index_value = builder.CreateAdd(index_value,gen->getConstant(64,1));
 
+		Value *second_GEP = builder.CreateGEP(gen->int_type(8),data_ptr,index_value);
+		secondbyte_value = builder.CreateAlignedLoad(second_GEP,1);
+		index_value = builder.CreateAdd(index_value,gen->getConstant(64,1));
+
+		builder.CreateAlignedStore(index_value,index_ptr,8);
+	}
+
+	Value *bitWidth_value;
+	//bitWidth = decodeBitWidth(((firstbyte >> 1) & 0x1f));
+	{
+		Value *shiftvalue = builder.CreateAShr(firstbyte_value,gen->getConstant(8,1));
+		Value *andvalue = builder.CreateAnd(shiftvalue,gen->getConstant(8,0x1f));
+		Value *andvalue_32 = builder.CreateSExt(andvalue,gen->int_type(32));
+		Value *decodedvalue = builder.CreateCall(genfunc_decodeBitWidth(gen,info),andvalue_32);
+		bitWidth_value = builder.CreateSExt(decodedvalue,gen->int_type(64));
+	}
+	Value *runLength_value;
 	//runLength = (((firstbyte&0x01)<<8) | secondbyte) + 1
-	Value *andvalue = builder.CreateAnd(firstbytevalue,gen->getConstant(8,1));
-	Value *andvalue_64 = builder.CreateSExt(andvalue,gen->int_type(64));
-	Value *shiftvalue = builder.CreateShl(andvalue_64,gen->getConstant(64,8));
-	Value *secondbytevalue_64 = builder.CreateZExt(secondbytevalue,gen->int_type(64));
-	Value *orvalue = builder.CreateOr(shiftvalue, secondbytevalue_64);
-	Value *incvalue2 = builder.CreateAdd(orvalue,gen->getConstant(64,1));
+	{
+		Value *andvalue = builder.CreateAnd(firstbyte_value,gen->getConstant(8,1));
+		Value *andvalue_64 = builder.CreateSExt(andvalue,gen->int_type(64));
+		Value *shiftvalue = builder.CreateShl(andvalue_64,gen->getConstant(64,8));
+		Value *secondbytevalue_64 = builder.CreateZExt(secondbyte_value,gen->int_type(64));
+		Value *orvalue = builder.CreateOr(shiftvalue, secondbytevalue_64);
+		runLength_value = builder.CreateAdd(orvalue,gen->getConstant(64,1));
+	}
 
 	std::vector<Value *> call_params;
-	Value *offsetvalue = builder.CreateAlignedLoad(offset,8);
-	call_params.push_back(dataaddr);
-	call_params.push_back(resultaddr);
-	call_params.push_back(indexaddr);
-	call_params.push_back(offsetvalue);
-	call_params.push_back(incvalue2);
+	call_params.push_back(data_ptr);
+	call_params.push_back(index_ptr);
+	call_params.push_back(offset_value);
+	call_params.push_back(runLength_value);
 	call_params.push_back(bitWidth_value);
+	call_params.push_back(result_ptr);
 
 	Value *ret = builder.CreateCall(genfunc_readLongs(gen, info),call_params);
 
 	builder.CreateRet(ret);
 	gen->AddFunctionToJit(fn,(void **)&fn);
 	return fn;
-
 }
 
 
 Function *genfunc_nextRepeat(LlvmCodeGen *gen, EncodingInfo info){
+
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"nextRepeat",IntegerType::getInt64Ty(gen->context()),false);
 	proto.AddArgument("data", gen->int_ptr_type(8));
-	proto.AddArgument("result", gen->int_ptr_type(64));
 	proto.AddArgument("index", gen->int_ptr_type(64));
 	proto.AddArgument("offset",gen->int_type(64));
+	proto.AddArgument("space", orc::MemSpace::getMemSpacePtr(gen));
+	proto.AddArgument("result", gen->int_ptr_type(64));
 
-	llvm::Value *params[4];
+
+	llvm::Value *params[5];
 	Function *fn = proto.GeneratePrototype(&builder,params);
 
-	Value *data_addr = builder.CreateAlloca(gen->int_ptr_type(8));
-	builder.CreateAlignedStore(params[0],data_addr,8);
-	Value *result_addr = builder.CreateAlloca(gen->int_ptr_type(64));
-	builder.CreateAlignedStore(params[1],result_addr,8);
-	Value *index_addr = builder.CreateAlloca(gen->int_ptr_type(64));
-	builder.CreateAlignedStore(params[2],index_addr,8);
-	Value *offset_ptr = builder.CreateAlloca(gen->int_type(64));
-	builder.CreateAlignedStore(params[3],offset_ptr,8);
-
-
-	Value *indexaddr = builder.CreateAlignedLoad(index_addr,8);
-	Value *dataaddr = builder.CreateAlignedLoad(data_addr,8);
-	Value *resultaddr = builder.CreateAlignedLoad(result_addr,8);
+	Value *data_ptr = params[0];
+	Value *index_ptr = params[1];
+	Value *offset_value = params[2];
+	Value *space_ptr = params[3];
+	Value *result_ptr = params[4];
 
 	//firstByte = data[index++];
-	Value *indexvalue = builder.CreateAlignedLoad(indexaddr,8);
-	Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
-	builder.CreateAlignedStore(incvalue,indexaddr,8);
-	Value *dataGEP = builder.CreateGEP(gen->int_type(8),dataaddr,indexvalue);
-	Value *firstbyte_value = builder.CreateAlignedLoad(dataGEP,1);
-
-	Value *value_ptr = builder.CreateAlloca(gen->int_type(64));
+	Value *firstbyte_value;
+	{
+		Value *index_value = builder.CreateAlignedLoad(index_ptr,8);
+		Value *incvalue = builder.CreateAdd(index_value,gen->getConstant(64,1));
+		builder.CreateAlignedStore(incvalue,index_ptr,8);
+		Value *dataGEP = builder.CreateGEP(gen->int_type(8),data_ptr,index_value);
+		firstbyte_value = builder.CreateAlignedLoad(dataGEP,1);
+	}
 	Value *value_value;
 	{
 		//byteSize = (firstByte >> 3) & 0x07 + 1;
-		//value = readLongBE(byteSize);
+		//value = readLongBE(data, index, byteSize);
 		Value *shiftvalue = builder.CreateAShr(firstbyte_value,gen->getConstant(8,3));
 		Value *andvalue = builder.CreateAnd(shiftvalue,gen->getConstant(8,0x07));
 		Value *andvalue_64 = builder.CreateSExt(andvalue,gen->int_type(64));
 		Value *bytesize = builder.CreateAdd(andvalue_64,gen->getConstant(64,1));
 		std::vector<Value *> call_params;
-		call_params.push_back(dataaddr);
-		call_params.push_back(indexaddr);
+		call_params.push_back(data_ptr);
+		call_params.push_back(index_ptr);
 		call_params.push_back(bytesize);
 		value_value = builder.CreateCall(genfunc_readLongBE(gen,info),call_params);
 		//value = unZigZag(value); for signed
 		if(info.issigned){
 			std::vector<Value *> call_params;
 			call_params.push_back(value_value);
-			Value *unzigzagedvalue_value = builder.CreateCall(genfunc_unZigZag(gen,info),call_params);
-			builder.CreateAlignedStore(unzigzagedvalue_value,value_ptr,64);
-		}else{
-			builder.CreateAlignedStore(value_value,value_ptr,64);
+			value_value = builder.CreateCall(genfunc_unZigZag(gen,info),call_params);
 		}
 	}
-	value_value = builder.CreateAlignedLoad(value_ptr,64);
-
 
 	Value *runLength_value;
 	{
@@ -174,7 +172,6 @@ Function *genfunc_nextRepeat(LlvmCodeGen *gen, EncodingInfo info){
 	{
 		//pos = offset;
 		//end = runLength + offset;
-		Value *offset_value = builder.CreateAlignedLoad(offset_ptr,8);
 		end_value = builder.CreateAdd(offset_value, runLength_value);
 		builder.CreateAlignedStore(offset_value,pos_ptr,8);
 	}
@@ -197,8 +194,7 @@ Function *genfunc_nextRepeat(LlvmCodeGen *gen, EncodingInfo info){
 	{
 		//result[pos] = value;
 		Value *pos_value = builder.CreateAlignedLoad(pos_ptr,64);
-		Value *resultaddr = builder.CreateAlignedLoad(result_addr,64);
-		Value *resultGEP = builder.CreateGEP(gen->int_type(64),resultaddr,pos_value);
+		Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_ptr,pos_value);
 		builder.CreateAlignedStore(value_value,resultGEP,8);
 		builder.CreateBr(label_for_inc);
 	}
@@ -225,34 +221,38 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"nextDelta",IntegerType::getInt64Ty(gen->context()),false);
 	proto.AddArgument("data", gen->int_ptr_type(8));
-	proto.AddArgument("result", gen->int_ptr_type(64));
 	proto.AddArgument("index", gen->int_ptr_type(64));
 	proto.AddArgument("offset",gen->int_type(64));
+	proto.AddArgument("space", orc::MemSpace::getMemSpacePtr(gen));
+	proto.AddArgument("result", gen->int_ptr_type(64));
 
-	llvm::Value *params[4];
+
+	llvm::Value *params[5];
 	Function *fn = proto.GeneratePrototype(&builder,params);
 
-	Value *data_addr = params[0];
-	Value *result_addr = params[1];
-	Value *index_addr = params[2];
-	Value *offset_value = params[3];
+	Value *data_ptr = params[0];
+	Value *index_ptr = params[1];
+	Value *offset_value = params[2];
+	Value *space_ptr = params[3];
+	Value *result_ptr = params[4];
+
 
 	Value *firstbyte_value;
 	Value *secondbyte_value;
 	//firstbyte = data[index++];
 	{
-		Value *indexvalue = builder.CreateAlignedLoad(index_addr,8);
+		Value *indexvalue = builder.CreateAlignedLoad(index_ptr,8);
 		Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
-		builder.CreateAlignedStore(incvalue,index_addr,8);
-		Value *dataGEP = builder.CreateGEP(gen->int_type(8),data_addr,indexvalue);
+		builder.CreateAlignedStore(incvalue,index_ptr,8);
+		Value *dataGEP = builder.CreateGEP(gen->int_type(8),data_ptr,indexvalue);
 		firstbyte_value = builder.CreateAlignedLoad(dataGEP,1);
 	}
 	//secondbyte = data[index++];
 	{
-		Value *indexvalue = builder.CreateAlignedLoad(index_addr,8);
+		Value *indexvalue = builder.CreateAlignedLoad(index_ptr,8);
 		Value *incvalue = builder.CreateAdd(indexvalue,gen->getConstant(64,1));
-		builder.CreateAlignedStore(incvalue,index_addr,8);
-		Value *dataGEP = builder.CreateGEP(gen->int_type(8),data_addr,indexvalue);
+		builder.CreateAlignedStore(incvalue,index_ptr,8);
+		Value *dataGEP = builder.CreateGEP(gen->int_type(8),data_ptr,indexvalue);
 		secondbyte_value = builder.CreateAlignedLoad(dataGEP,1);
 	}
 	Value *fbo_value;
@@ -308,8 +308,8 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 		readfunc = genfunc_readVuLong(gen,info);
 	}
 	std::vector<Value *> call_params;
-	call_params.push_back(data_addr);
-	call_params.push_back(index_addr);
+	call_params.push_back(data_ptr);
+	call_params.push_back(index_ptr);
 	Value *firstValue_value = builder.CreateCall(readfunc,call_params);
 	//deltabase = readVsLong(data,index);
 	Value *deltaBase_value = builder.CreateCall(genfunc_readVsLong(gen,info),call_params);
@@ -327,7 +327,7 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 		Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
 		Value *incvalue = builder.CreateAdd(pos_value,gen->getConstant(64,1));
 		builder.CreateAlignedStore(incvalue,pos_ptr,8);
-		Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_addr,pos_value);
+		Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_ptr,pos_value);
 		builder.CreateAlignedStore(firstValue_value,resultGEP,8);
 	}
 
@@ -364,7 +364,7 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 			Value *prevValue_value = builder.CreateAlignedLoad(prevValue_ptr,8);
 			Value *addvalue = builder.CreateAdd(prevValue_value,deltaBase_value);
 			Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
-			Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_addr,pos_value);
+			Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_ptr,pos_value);
 			builder.CreateAlignedStore(addvalue,resultGEP,8);
 			builder.CreateAlignedStore(addvalue,prevValue_ptr,8);
 			builder.CreateBr(label_for_inc_bitsize);
@@ -402,7 +402,8 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 			Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
 			Value *incvalue = builder.CreateAdd(pos_value,gen->getConstant(64,1));
 			builder.CreateAlignedStore(incvalue,pos_ptr,8);
-			Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_addr,pos_value);
+
+			Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_ptr,pos_value);
 			builder.CreateAlignedStore(addvalue,resultGEP,8);
 			builder.CreateAlignedStore(addvalue,prevValue_ptr,8);
 			builder.CreateBr(label_if_end_else);
@@ -414,14 +415,13 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 		Value *remaining_value = builder.CreateSub(end_value,pos_value);
 		Value *bitSize_value = builder.CreateAlignedLoad(bitSize_ptr,8);
 		std::vector<Value *> call_params;
-		call_params.push_back(data_addr);
-		call_params.push_back(result_addr);
-		call_params.push_back(index_addr);
+		call_params.push_back(data_ptr);
+		call_params.push_back(index_ptr);
 		call_params.push_back(pos_value);
 		call_params.push_back(remaining_value);
 		call_params.push_back(bitSize_value);
-		Function *func_readLongs = genfunc_readLongs(gen,info);
-		builder.CreateCall(func_readLongs,call_params);
+		call_params.push_back(result_ptr);
+		builder.CreateCall(genfunc_readLongs(gen,info),call_params);
 
 		BasicBlock *label_if_cond_deltabase = BasicBlock::Create(gen->context(),"if.cond.deltabase",fn);
 		BasicBlock *label_if_then_deltabase = BasicBlock::Create(gen->context(),"if.then.deltabase",fn);
@@ -433,74 +433,54 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 			Value *cmp_value = builder.CreateICmpULT(deltaBase_value,gen->getConstant(64,0));
 			builder.CreateCondBr(cmp_value,label_if_then_deltabase,label_if_else_deltabase);
 		}
-		builder.SetInsertPoint(label_if_then_deltabase);
-		{
-			BasicBlock *label_for_cond_then = BasicBlock::Create(gen->context(),"for.cond.then",fn);
-			BasicBlock *label_for_body_then = BasicBlock::Create(gen->context(),"for.body.then",fn);
-			BasicBlock *label_for_inc_then = BasicBlock::Create(gen->context(),"for.inc.then",fn);
-			builder.CreateBr(label_for_cond_then);
-			builder.SetInsertPoint(label_for_cond_then);
-			//for(;pos<end;pos++)
-			{
-				Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
-				Value *cmp_value = builder.CreateICmpULT(pos_value,end_value);
-				builder.CreateCondBr(cmp_value,label_for_body_then,label_if_end_bitsize);
+		for(int i=0;i<2;i++){
+			if(i==0){
+				builder.SetInsertPoint(label_if_then_deltabase);
+			}else{
+				builder.SetInsertPoint(label_if_else_deltabase);
 			}
-			builder.SetInsertPoint(label_for_body_then);
-			//prevValue = result[pos] = prevValue - result[pos];
+
 			{
-				Value *prevValue_value = builder.CreateAlignedLoad(prevValue_ptr,8);
-				Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
-				Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_addr,pos_value);
-				Value *result_value = builder.CreateAlignedLoad(resultGEP,8);
-				Value *subvalue = builder.CreateSub(prevValue_value,result_value);
-				builder.CreateAlignedStore(subvalue,resultGEP,8);
-				builder.CreateAlignedStore(subvalue,prevValue_ptr,8);
-				builder.CreateBr(label_for_inc_then);
-			}
-			builder.SetInsertPoint(label_for_inc_then);
-			//pos++;
-			{
-				Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
-				Value *incvalue = builder.CreateAdd(pos_value,gen->getConstant(64,1));
-				builder.CreateAlignedStore(incvalue,pos_ptr,8);
+				BasicBlock *label_for_cond_then = BasicBlock::Create(gen->context(),"for.cond.then",fn);
+				BasicBlock *label_for_body_then = BasicBlock::Create(gen->context(),"for.body.then",fn);
+				BasicBlock *label_for_inc_then = BasicBlock::Create(gen->context(),"for.inc.then",fn);
 				builder.CreateBr(label_for_cond_then);
+				builder.SetInsertPoint(label_for_cond_then);
+				//for(;pos<end;pos++)
+				{
+					Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
+					Value *cmp_value = builder.CreateICmpULT(pos_value,end_value);
+					builder.CreateCondBr(cmp_value,label_for_body_then,label_if_end_bitsize);
+				}
+				builder.SetInsertPoint(label_for_body_then);
+				//prevValue = result[pos] = prevValue - result[pos];
+				//prevValue = result[pos] = prevValue + result[pos];
+
+				{
+					Value *prevValue_value = builder.CreateAlignedLoad(prevValue_ptr,8);
+					Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
+					Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_ptr,pos_value);
+					Value *result_value = builder.CreateAlignedLoad(resultGEP,8);
+					if(i==0){
+						result_value = builder.CreateSub(prevValue_value,result_value);
+					}else{
+						result_value = builder.CreateAdd(prevValue_value,result_value);
+					}
+					builder.CreateAlignedStore(result_value,resultGEP,8);
+					builder.CreateAlignedStore(result_value,prevValue_ptr,8);
+					builder.CreateBr(label_for_inc_then);
+				}
+				builder.SetInsertPoint(label_for_inc_then);
+				//pos++;
+				{
+					Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
+					Value *incvalue = builder.CreateAdd(pos_value,gen->getConstant(64,1));
+					builder.CreateAlignedStore(incvalue,pos_ptr,8);
+					builder.CreateBr(label_for_cond_then);
+				}
 			}
 		}
-		builder.SetInsertPoint(label_if_else_deltabase);
-		{
-			BasicBlock *label_for_cond_else = BasicBlock::Create(gen->context(),"for.cond.else",fn);
-			BasicBlock *label_for_body_else = BasicBlock::Create(gen->context(),"for.body.else",fn);
-			BasicBlock *label_for_inc_else = BasicBlock::Create(gen->context(),"for.inc.else",fn);
-			builder.CreateBr(label_for_cond_else);
-			builder.SetInsertPoint(label_for_cond_else);
-			//for(;pos<end;pos++);
-			{
-				Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
-				Value *cmp_value = builder.CreateICmpULT(pos_value,end_value);
-				builder.CreateCondBr(cmp_value,label_for_body_else,label_if_end_bitsize);
-			}
-			//prevValue = result[pos] = prevValue + result[pos];
-			builder.SetInsertPoint(label_for_body_else);
-			{
-				Value *prevValue_value = builder.CreateAlignedLoad(prevValue_ptr,8);
-				Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
-				Value *resultGEP = builder.CreateGEP(gen->int_type(64),result_addr,pos_value);
-				Value *result_value = builder.CreateAlignedLoad(resultGEP,8);
-				Value *addvalue = builder.CreateAdd(prevValue_value,result_value);
-				builder.CreateAlignedStore(addvalue,resultGEP,8);
-				builder.CreateAlignedStore(addvalue,prevValue_ptr,8);
-				builder.CreateBr(label_for_inc_else);
-			}
-			//pos++;
-			builder.SetInsertPoint(label_for_inc_else);
-			{
-				Value *pos_value = builder.CreateAlignedLoad(pos_ptr,8);
-				Value *incvalue = builder.CreateAdd(pos_value,gen->getConstant(64,1));
-				builder.CreateAlignedStore(incvalue,pos_ptr,8);
-				builder.CreateBr(label_for_cond_else);
-			}
-		}
+
 	}
 
 	builder.SetInsertPoint(label_if_end_bitsize);
@@ -514,6 +494,7 @@ Function *genfunc_nextDelta(LlvmCodeGen *gen,EncodingInfo info){
 
 Function *genfunc_nextPatched(LlvmCodeGen *gen, EncodingInfo info){
 
+
 	return NULL;
 
 }
@@ -521,13 +502,17 @@ Function *genfunc_nextPatched(LlvmCodeGen *gen, EncodingInfo info){
 Function *genfunc_next(LlvmCodeGen *gen, ColumnInfo info){
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"nextFunc_"+info.colname,IntegerType::getInt64Ty(gen->context()),false);
+
 	proto.AddArgument("data", gen->int_ptr_type(8));
-	proto.AddArgument("result", gen->int_ptr_type(64));
 	proto.AddArgument("index", gen->int_ptr_type(64));
 	proto.AddArgument("offset",gen->int_type(64));
+	proto.AddArgument("space", orc::MemSpace::getMemSpacePtr(gen));
+	proto.AddArgument("result", gen->int_ptr_type(64));
 
-	llvm::Value *params[4];
-	Function *fn = proto.GeneratePrototype(&builder,&params[0]);
+
+	llvm::Value *params[5];
+	Function *fn = proto.GeneratePrototype(&builder,params);
+
 
 	int encoding_count = info.hasdelta + info.hasdirect + info.hasrepeat + info.haspatched;
 	assert(encoding_count>0);
@@ -572,13 +557,11 @@ Function *genfunc_next(LlvmCodeGen *gen, ColumnInfo info){
 	}
 
 
-	Value *data_addr = params[0];
-	Value *result_addr = params[1];
-	Value *index_addr = params[2];
-	Value *offset_value = params[3];
+	Value *data_ptr = params[0];
+	Value *index_ptr = params[1];
 
-	Value *indexvalue = builder.CreateAlignedLoad(index_addr,8);
-	Value *dataGEP = builder.CreateGEP(gen->int_type(8),data_addr,indexvalue);
+	Value *indexvalue = builder.CreateAlignedLoad(index_ptr,8);
+	Value *dataGEP = builder.CreateGEP(gen->int_type(8),data_ptr,indexvalue);
 	Value *firstbyte_value = builder.CreateAlignedLoad(dataGEP,1);
 
 	Value *encoding;
