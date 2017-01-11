@@ -1,0 +1,15 @@
+select 
+	l_orderkey,
+	l_partkey,
+	l_suppkey,
+	l_linenumber,
+	l_linestatus,
+	l_returnflag,
+	l_shipdate,
+	l_receiptdate,
+	l_commitdate,
+	l_shipinstruct,
+	l_shipmode,
+	l_comment
+from 
+	rle;

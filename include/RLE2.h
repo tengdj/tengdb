@@ -12,6 +12,7 @@
 #include "ColumnInfo.h"
 namespace orc{
 
+template <typename I, typename UI>
 class RLE2{
 
 	unsigned char *data;
@@ -19,32 +20,29 @@ class RLE2{
 	uint64_t datasize;
 	bool issigned;
 
-	uint64_t nextDirect(int64_t *result, uint64_t offset);
-	uint64_t nextShortRepeats(int64_t *result, uint64_t offset);
-	uint64_t nextDelta(int64_t *result, uint64_t offset);
-	uint64_t nextPatched(int64_t *result, uint64_t offset);
-
-	int64_t readLongBE(uint64_t bsz);
-	uint64_t readVulong();
-	int64_t readVslong();
-	uint64_t readLongs(int64_t *result, uint64_t offset, uint64_t len, uint64_t fb);
-	void processDirect(EncodingInfo &Info);
-	void processDelta(EncodingInfo &Info);
-	void processRepeat(EncodingInfo &Info);
+	uint64_t nextDirect(I *result, uint64_t offset,EncodingInfo *info);
+	uint64_t nextShortRepeats(I *result, uint64_t offset,EncodingInfo *info);
+	uint64_t nextDelta(I *result, uint64_t offset,EncodingInfo *info);
+	uint64_t nextPatched(I *result, uint64_t offset,EncodingInfo *info);
+	inline I unZigZag(UI value);
+	I readLongBE(uint64_t bsz);
+	UI readVulong();
+	I readVslong();
+	uint64_t readLongs(I *result, uint64_t offset, uint64_t len, uint64_t fb, bool issigned = false);
 
 public:
-	void read(int64_t *result);
+	void next(I *result,RLEInfo *cinfo);
 	RLE2(unsigned char *data, uint64_t datasize, bool issigned);
-	void getInfo(ColumnInfo &cinfo);
-
 
 	~RLE2();
 };
 
-void readDirect_spec(char *data, int64_t *result, uint64_t &index, uint64_t);
-void readDirect_general(char *data, int64_t *result, uint64_t &index, uint64_t);
-uint64_t readDirect_spec2(char *data, int64_t *result, uint64_t &index);
-enum EncodingType { SHORT_REPEAT=0, DIRECT=1, PATCHED_BASE=2, DELTA=3 };
+enum EncodingType {
+	SHORT_REPEAT=0,
+	DIRECT=1,
+	PATCHED_BASE=2,
+	DELTA=3
+};
 
 
 }

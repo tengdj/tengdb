@@ -1,26 +1,30 @@
 
-find_package(LLVM REQUIRED CONFIG)
+set(LLVM_VERSION 3.9)
+find_package(LLVM ${LLVM_VERSION} REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
+#include_directories(/usr/local/llvm/include)
+
 add_definitions(${LLVM_DEFINITIONS})
 llvm_map_components_to_libnames(llvm_libs all)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${LLVM_CXX_FLAGS}")
 
-add_executable(main 
-		Query1.cpp 
-		OrcFile.cpp 
-		Reader.cpp 
-		orc_proto.pb.cc 
-		config.cpp 
-		llvm-codegen.cpp 
-		RLE2.cpp
-		RLE2-ir.cpp
-		util-ir.cpp
-		ColumnReader-ir.cpp
-		MemoryPool.cpp
-		)
-		#LLVMCore LLVMSupport LLVMMCJIT LLVMPasses LLVMX86CodeGen LLVMX86AsmParser
-target_link_libraries(main libprotobuf.so LLVMCore LLVMSupport LLVMMCJIT LLVMPasses LLVMX86CodeGen LLVMX86AsmParser)
+if(LLVM_VERSION EQUAL 3.9)
+include_directories(codegen9)
+ADD_SUBDIRECTORY(codegen9)
+MESSAGE("LLVM VERSION 3.9")
+else()
+include_directories(codegen8)
+ADD_SUBDIRECTORY(codegen8)
+MESSAGE("LLVM VERSION 3.8")
 
-#add_executable(llvm llvm-codegen.cpp llvm-codegen-test.cpp config.cpp)
-#target_link_libraries(llvm ${llvm_libs})
+endif()
+
+ADD_SUBDIRECTORY(common)
+ADD_SUBDIRECTORY(orc)
+ADD_SUBDIRECTORY(orc-ir)
+ADD_SUBDIRECTORY(test)
+ADD_SUBDIRECTORY(exec)
+ADD_SUBDIRECTORY(frontend)
+ADD_SUBDIRECTORY(llvm-vec)
+

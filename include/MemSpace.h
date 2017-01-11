@@ -8,7 +8,7 @@
 #ifndef TEMPSPACE_H_
 #define TEMPSPACE_H_
 
-#include "../src/llvm-codegen.h"
+#include "llvm-codegen.h"
 
 using namespace llvm;
 namespace orc{

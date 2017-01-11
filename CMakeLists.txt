@@ -1,8 +1,25 @@
 PROJECT(MYORC)
 cmake_minimum_required(VERSION 2.8)
 set (CMAKE_CXX_COMPILER g++)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -O3")
+if(DEFINED ENV{AVX2})
+	message("avx2")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -mavx2 -O3 -pthread -Wl,--no-as-needed -rdynamic -DNDEBUG")
+else()
+	message("sse4.2")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -msse4.2 -O3 -pthread -Wl,--no-as-needed -rdynamic -DNDEBUG")
+endif()
 set (LLVM_CXX_FLAGS "-D_DEBUG -D_GNU_SOURCE -D__STDC_FORMAT_MACROS -Wno-write-strings -Wcast-qual -fomit-frame-pointer -fvisibility-inlines-hidden -fPIC -ffunction-sections -fdata-sections ")
-
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 include_directories(include)
 ADD_SUBDIRECTORY(src)
+
+
+
+
+configure_file(sql/rle.sql rle.sql COPYONLY)
+configure_file(sql/int.sql int.sql COPYONLY)
+configure_file(sql/double.sql double.sql COPYONLY)
+configure_file(sql/all.sql all.sql COPYONLY)
+configure_file(sql/date.sql date.sql COPYONLY)
+configure_file(sql/string.sql string.sql COPYONLY)
+configure_file(sql/varchar.sql varchar.sql COPYONLY)
