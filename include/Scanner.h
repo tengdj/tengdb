@@ -7,14 +7,15 @@
 
 #ifndef INCLUDE_SCANNER_H_
 #define INCLUDE_SCANNER_H_
-#include "batch.h"
-#include "Reader.h"
+
 #include "Table.h"
 #include <map>
 #include <vector>
 #include <mutex>
+#include "ORCReader.h"
+#include "llvm-codegen.h"
 
-namespace orc{
+namespace tengdb{
 
 class Scanner{
 protected:
@@ -42,6 +43,7 @@ public:
 			delete batch;
 		}
 	};
+
 	void prepare(LlvmCodeGen *gen){
 		this->gen = gen;
 	}

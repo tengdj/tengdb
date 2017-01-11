@@ -5,16 +5,17 @@
  *      Author: teng
  */
 
-#include "../include/RLE2.h"
 
 #include <stdint.h>
 #include <iostream>
 #include <bitset>
-
-#include "../include/util.h"
-#include "../include/MemoryPool.h"
-#include "config.h"
 #include <immintrin.h>
+
+
+#include "RLE2.h"
+#include "util.h"
+#include "MemoryPool.h"
+#include "config.h"
 
 #define MIN_REPEAT 3
 
@@ -409,7 +410,7 @@ uint64_t RLE2<I,UI>::readLongs(I *result, uint64_t offset, uint64_t len, uint64_
 
 static void updateEncodingInfo(EncodingInfo *info,uint64_t bsize, uint64_t runlength){
 
-	if(!orc::FLAGS_codegen){
+	if(!FLAGS_codegen){
 		return;
 	}
 	info->bitsize[bsize]++;

@@ -7,19 +7,21 @@
 
 #include <util.h>
 #include <unistd.h>
+#include <iostream>
+
+
 #include "Scanner.h"
 #include "functions-ir.h"
 #include "RLE2.h"
-#include "batch.h"
-#include <iostream>
 using namespace std;
+using namespace tengdb;
 namespace orc{
 
 ORCScanner::ORCScanner(Table *table,std::vector<Column> columns){
 	this->table = table;
 	this->curStripe = 0;
 	this->reader = NULL;
-	this->databuf = new DataBuffer<unsigned char>(*orc::getDefaultPool(),100);
+	this->databuf = new DataBuffer<unsigned char>(*getDefaultPool(),100);
 	for(Column col: columns){
 		this->columns.push_back(col);
 	}
@@ -58,9 +60,7 @@ Batch * ORCScanner::nextBatch(){
 	}
 	batch->eof = false;
 
-	proto::StripeInformation sinfo = reader->getStrips(curStripe);
-
-	uint64_t nrows = sinfo.numberofrows();
+	uint64_t nrows = reader->getNumofRows(curStripe);
 	batch->resize(nrows);
 	uint64_t datasize = 0;
 
@@ -68,7 +68,7 @@ Batch * ORCScanner::nextBatch(){
 		TypeKind kind = col.type;
 
 		if(!col.isRleType()){
-			reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *batch->data[col.name],datasize);
+			reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *batch->data[col.name],datasize);
 		}else{
 
 			uint64_t index=0;
@@ -78,7 +78,7 @@ Batch * ORCScanner::nextBatch(){
 				switch(kind){
 				case BYTE:
 				{
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *databuf,datasize);
 					unsigned char *data = databuf->data();
 					void *result = (void *)batch->data[col.name]->data();
 					RLE2<int8_t,uint8_t> *rle = new RLE2<int8_t,uint8_t>(data,datasize,true);
@@ -88,7 +88,7 @@ Batch * ORCScanner::nextBatch(){
 				}
 				case SHORT:
 				{
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *databuf,datasize);
 					unsigned char *data = databuf->data();
 					void *result = (void *)batch->data[col.name]->data();
 					RLE2<int16_t,uint16_t> *rle = new RLE2<int16_t,uint16_t>(data,datasize,true);
@@ -98,7 +98,7 @@ Batch * ORCScanner::nextBatch(){
 				}
 				case INT:
 				{
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *databuf,datasize);
 					unsigned char *data = databuf->data();
 					void *result = (void *)batch->data[col.name]->data();
 					RLE2<int32_t,uint32_t> *rle = new RLE2<int32_t,uint32_t>(data,datasize,true);
@@ -108,7 +108,7 @@ Batch * ORCScanner::nextBatch(){
 				}
 				case LONG:
 				{
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *databuf,datasize);
 					unsigned char *data = databuf->data();
 					void *result = (void *)batch->data[col.name]->data();
 					RLE2<int64_t,uint64_t> *rle = new RLE2<int64_t,uint64_t>(data,datasize,true);
@@ -118,7 +118,7 @@ Batch * ORCScanner::nextBatch(){
 				}
 				case DATE:
 				{
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *databuf,datasize);
 					unsigned char *data = databuf->data();
 					void *result = (void *)batch->data[col.name]->data();
 					RLE2<int16_t,uint16_t> *rle = new RLE2<int16_t,uint16_t>(data,datasize,true);
@@ -129,7 +129,7 @@ Batch * ORCScanner::nextBatch(){
 				case STRING:
 				{
 
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *databuf,datasize);
 					unsigned char *data = databuf->data();
 					void *result = (void *)batch->data[col.name]->data();
 					RLE2<int32_t,uint32_t> *rle = new RLE2<int32_t,uint32_t>(data,datasize,false);
@@ -139,7 +139,7 @@ Batch * ORCScanner::nextBatch(){
 				}
 				case VARCHAR:
 				{
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_LENGTH, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_LENGTH, *databuf,datasize);
 					unsigned char *data = databuf->data();
 					void *result = (void *)batch->data[col.name]->data();
 					RLE2<int32_t,uint32_t> *rle = new RLE2<int32_t,uint32_t>(data,datasize,false);
@@ -158,9 +158,9 @@ Batch * ORCScanner::nextBatch(){
 
 			}else{
 				if(kind==VARCHAR){
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_LENGTH, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_LENGTH, *databuf,datasize);
 				}else{
-					reader->readdata(curStripe,table->getColumnNumber(col.name),proto::Stream_Kind_DATA, *databuf,datasize);
+					reader->readdata(curStripe,table->getColumnNumber(col.name),Stream_Kind_DATA, *databuf,datasize);
 				}
 				unsigned char *data = databuf->data();
 				void *result = (void *)batch->data[col.name]->data();
@@ -205,7 +205,7 @@ ORCScanner::~ORCScanner(){
 	ORCScanner::mtx.unlock();
 
 	if(table->unreg()==0){
-		if(orc::FLAGS_codegen){
+		if(FLAGS_codegen){
 			bool genchanged = false;
 			for(Column col:columns){
 				if(col.isRleType()&&!gen->hasFunction("next_"+col.name)){

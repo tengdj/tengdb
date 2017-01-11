@@ -9,7 +9,10 @@
 #define INCLUDE_RLE2_H_
 
 #include <memory>
-#include "ColumnInfo.h"
+
+#include "ORCColumnInfo.h"
+
+using namespace tengdb;
 namespace orc{
 
 template <typename I, typename UI>

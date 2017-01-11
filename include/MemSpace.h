@@ -11,7 +11,7 @@
 #include "llvm-codegen.h"
 
 using namespace llvm;
-namespace orc{
+namespace tengdb{
 
 enum MemSpaceField{
 	bitMap = 0,

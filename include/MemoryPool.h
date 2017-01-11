@@ -21,7 +21,7 @@
 
 #include <memory>
 
-namespace orc {
+namespace tengdb {
 
   class MemoryPool {
   public:
@@ -74,7 +74,53 @@ namespace orc {
     void resize(uint64_t _size);
   };
 
-} // namespace orc
+  /// An ObjectPool maintains a list of C++ objects which are deallocated by destroying or
+  /// clearing the pool.
+  /// Thread-safe.
+  class ObjectPool {
+   public:
+    ObjectPool(): objects_() {}
+
+    ~ObjectPool() { Clear(); }
+
+    template <class T>
+    T* Add(T* t) {
+      // Create the object to be pushed to the shared vector outside the critical section.
+      // TODO: Consider using a lock-free structure.
+      SpecificElement<T>* obj = new SpecificElement<T>(t);
+      objects_.push_back(obj);
+      return t;
+    }
+
+    void Clear() {
+      for (ElementVector::iterator i = objects_.begin();
+           i != objects_.end(); ++i) {
+        delete *i;
+      }
+      objects_.clear();
+    }
+
+   private:
+    struct GenericElement {
+      virtual ~GenericElement() {}
+    };
+
+    template <class T>
+    struct SpecificElement : GenericElement {
+      SpecificElement(T* t): t(t) {}
+      ~SpecificElement() {
+        delete t;
+      }
+
+      T* t;
+    };
+
+    typedef std::vector<GenericElement*> ElementVector;
+    ElementVector objects_;
+  };
+
+
+} // namespace tengdb
 
 
 #endif /* MEMORYPOOL_HH_ */

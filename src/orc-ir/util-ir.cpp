@@ -25,13 +25,13 @@
 #include <memory>
 #include <iostream>
 
+#include "../../include/ORCColumnInfo.h"
+#include "../../include/ORCReader.h"
 #include "config.h"
-#include "Reader.h"
 #include "RLE2.h"
 #include "util.h"
 #include "llvm-codegen.h"
 #include "functions-ir.h"
-#include "ColumnInfo.h"
 #include "vectorization-ir.h"
 
 using namespace llvm;

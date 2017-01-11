@@ -22,7 +22,7 @@
 #include <iostream>
 #include <string.h>
 
-namespace orc {
+namespace tengdb {
 
   MemoryPool::~MemoryPool() {
     // PASS

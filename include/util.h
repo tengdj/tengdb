@@ -10,7 +10,6 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include "Reader.h"
 #include <string>
 #include <mutex>
 #include <dirent.h>
@@ -21,9 +20,62 @@
 #include <sys/stat.h>
 
 #include "config.h"
+#include "ORCReader.h"
 
-namespace orc{
+namespace tengdb{
 
+enum TypeKind {
+    BOOLEAN = 0,
+    BYTE = 1,//8
+    SHORT = 2,//16
+    INT = 3,//32
+    LONG = 4,//64
+    FLOAT = 5,//32
+    DOUBLE = 6,//64
+    STRING = 7,
+    BINARY = 8,
+    TIMESTAMP = 9,
+    LIST = 10,
+    MAP = 11,
+    STRUCT = 12,
+    UNION = 13,
+    DECIMAL = 14,
+    DATE = 15,
+    VARCHAR = 16,
+    CHAR = 17
+};
+
+inline int bitofType(TypeKind kind){
+	switch(kind){
+	case BOOLEAN:
+		return 1;
+	case BYTE:
+		return 8;
+	case DATE:
+	case SHORT:
+		return 16;
+	case INT:
+	case FLOAT:
+	case STRING:
+	case VARCHAR:
+		return 32;
+	case LONG:
+	case DOUBLE:
+		return 64;
+	default:
+		printf("variable length!\n");
+		exit(0);
+	}
+}
+
+inline int byteofType(TypeKind kind){
+	int bit = bitofType(kind);
+	if(bit<8){
+		return 1;
+	}else{
+		return bit/8;
+	}
+}
 
 struct FixedBitSizes {
   enum FBS {
@@ -87,88 +139,10 @@ inline IT unZigZag(UT value) {
     return value >> 1 ^ -(value & 1);
 };
 
-
-
-enum TypeKind {
-    BOOLEAN = 0,
-    BYTE = 1,//8
-    SHORT = 2,//16
-    INT = 3,//32
-    LONG = 4,//64
-    FLOAT = 5,//32
-    DOUBLE = 6,//64
-    STRING = 7,
-    BINARY = 8,
-    TIMESTAMP = 9,
-    LIST = 10,
-    MAP = 11,
-    STRUCT = 12,
-    UNION = 13,
-    DECIMAL = 14,
-    DATE = 15,
-    VARCHAR = 16,
-    CHAR = 17
-};
-
-inline int bitofType(TypeKind kind){
-	switch(kind){
-	case BOOLEAN:
-		return 1;
-	case BYTE:
-		return 8;
-	case DATE:
-	case SHORT:
-		return 16;
-	case INT:
-	case FLOAT:
-	case STRING:
-	case VARCHAR:
-		return 32;
-	case LONG:
-	case DOUBLE:
-		return 64;
-	default:
-		printf("variable length!\n");
-		exit(0);
-	}
-}
-
-inline int byteofType(TypeKind kind){
-	int bit = bitofType(kind);
-	if(bit<8){
-		return 1;
-	}else{
-		return bit/8;
-	}
-}
-
-struct Column{
-	std::string name;
-	TypeKind type;
-	Column(){name = "";type = INT;};
-	Column(std::string name,TypeKind type){
-		this->name = name;
-		this->type = type;
-	}
-	Column(const Column &column){
-		name = column.name;
-		type = column.type;
-	}
-
-	bool isRleType(){
-		return type!=DOUBLE&&type!=FLOAT;
-	}
-};
-
 inline bool exists_module_file (const std::string& name) {
   struct stat buffer;
   return (stat ((name+"_opt.ll").c_str(), &buffer) == 0);
 }
-
-
-
-
-
 
 }
 #endif /* INCLUDE_UTIL_H_ */

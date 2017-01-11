@@ -48,17 +48,17 @@
 
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
-#include "../include/config.h"
-#include "../include/util.h"
-#include "./llvm-codegen.h"
+#include "config.h"
+#include "util.h"
+#include "llvm-codegen.h"
 
-#include "../include/object-pool.h"
+#include "MemoryPool.h"
 
 using namespace llvm;
 using std::fstream;
 
 
-namespace orc {
+namespace tengdb {
 
 static bool llvm_initialized = false;
 
@@ -218,7 +218,7 @@ int LlvmCodeGen::Init() {
 
 
 
-  llvm::CodeGenOpt::Level opt_level = (CodeGenOpt::Level)orc::FLAGS_optimization_level;
+  llvm::CodeGenOpt::Level opt_level = (CodeGenOpt::Level)FLAGS_optimization_level;
 #ifndef NDEBUG
   // For debug builds, don't generate JIT compiled optimized assembly.
   // This takes a non-neglible amount of time (~.5 ms per function) and
@@ -573,7 +573,7 @@ int LlvmCodeGen::FinalizeModule() {
 
   // Don't waste time optimizing module if there are no functions to JIT. This can happen
   // if the codegen object is created but no functions are successfully codegen'd.
-  if (orc::FLAGS_optimization_level>0&&optimizations_enabled_ && !fns_to_jit_compile_.empty()) {
+  if (FLAGS_optimization_level>0&&optimizations_enabled_ && !fns_to_jit_compile_.empty()) {
     OptimizeModule();
   }
 

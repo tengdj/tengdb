@@ -9,8 +9,11 @@
 #define INCLUDE_TABLE_H_
 #include "util.h"
 #include "vectorization-ir.h"
+#include "llvm-codegen.h"
 
-namespace orc{
+
+using namespace orc;
+namespace tengdb{
 
 const static std::string separator = "__";
 inline std::string replace(std::string& str, const std::string& from, const std::string& to) {
@@ -143,15 +146,15 @@ public:
 		mtx.lock();
 		if(!gen){
 			pool = new ObjectPool();
-			if(orc::exists_module_file(tablename)&&!orc::FLAGS_codegen){
-				if(orc::FLAGS_use_optimized_module){
-	            	orc::LlvmCodeGen::LoadFromFile(pool,tablename+"_opt.ll",tablename,&gen);
+			if(exists_module_file(tablename)&&!FLAGS_codegen){
+				if(FLAGS_use_optimized_module){
+	            	LlvmCodeGen::LoadFromFile(pool,tablename+"_opt.ll",tablename,&gen);
 				}else{
-	            	orc::LlvmCodeGen::LoadFromFile(pool,tablename+"_unopt.ll",tablename,&gen);
+	            	LlvmCodeGen::LoadFromFile(pool,tablename+"_unopt.ll",tablename,&gen);
 				}
 			}else{
 				gen = new LlvmCodeGen(pool,tablename);
-				orc::initializeVectorization(gen);
+				initializeVectorization(gen);
 			}
 		}
 		mtx.unlock();
@@ -196,7 +199,7 @@ static Table *getTable(std::string table){
 		tablename = table.substr(0,pos);
 		std::string filename = table.substr(pos+separator.length(),table.length());
 	}
-	std::string tablepath = orc::dbpath+"/"+table;
+	std::string tablepath = dbpath+"/"+table;
 	std::vector<Column> columns;
 
 	if(tablename=="allsmall" || tablename=="lineitem"){

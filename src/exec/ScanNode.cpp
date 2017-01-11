@@ -9,7 +9,8 @@
 #include "functions-ir.h"
 #include "Scanner.h"
 
-namespace orc{
+
+namespace tengdb{
 
 ScanNode::ScanNode(Table *table,std::vector<Column> columns){
 
@@ -20,7 +21,7 @@ ScanNode::ScanNode(Table *table,std::vector<Column> columns){
 
 ScanNode::ScanNode(std::string tablename, std::vector<Column> columns){
 
-	Table *table = orc::getTable(tablename);
+	Table *table = getTable(tablename);
 	this->columns = columns;
 	this->table = table;
 	this->scanner = new ORCScanner(table, columns);

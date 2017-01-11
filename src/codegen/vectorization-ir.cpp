@@ -3,7 +3,7 @@
 
 using namespace llvm;
 
-namespace orc{
+namespace tengdb{
 
 void initializeVectorization(LlvmCodeGen *gen){
 	 VectorType* type_8_16 = VectorType::get(IntegerType::get(gen->context(), 8), 16);

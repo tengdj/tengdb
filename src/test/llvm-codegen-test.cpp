@@ -9,7 +9,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 
-#include "object-pool.h"
+#include "MemoryPool.h"
 #include <vector>
 #include <stdint.h>
 #include <iostream>
@@ -17,6 +17,7 @@
 using namespace llvm;
 using namespace std;
 using namespace orc;
+using namespace tengdb;
 
 
 Function *genFunc(LlvmCodeGen *gen,Function *callee,const string funcname){

@@ -15,8 +15,103 @@
 #include "util.h"
 
 using namespace std;
+using namespace tengdb;
+
 namespace orc{
 
+
+
+
+struct Batch{
+
+	uint64_t counter = 0;
+
+	std::map<std::string, DataBuffer<unsigned char> *> data;
+	std::vector<Column> columns;
+	uint64_t rownumber;
+	uint64_t capacity;
+
+	bool eof;
+
+	void print(){
+		if(counter==0){
+			cout<<"#\t";
+			for(Column col:columns){
+				cout<<col.name<<"\t";
+			}
+			cout<<endl;
+		}
+
+		void *dataarray[columns.size()];
+		for(int i=0;i<columns.size();i++){
+			dataarray[i] = (void *)data[columns[i].name]->data();
+		}
+		for(uint64_t i=0;i<rownumber;i++){
+			cout<<++counter<<"\t";
+			int8_t byte;
+			for(int j=0;j<columns.size();j++){
+
+				switch(columns[j].type){
+				case DOUBLE:
+					cout<<((double *)dataarray[j])[i]<<"\t";
+					break;
+				case FLOAT:
+					cout<<((float *)dataarray[j])[i]<<"\t";
+					break;
+				case LONG:
+					cout<<((int64_t *)dataarray[j])[i]<<"\t";
+					break;
+				case STRING:
+				case INT:
+				case VARCHAR:
+					cout<<((int32_t *)dataarray[j])[i]<<"\t";
+					break;
+				case DATE:
+				case SHORT:
+					cout<<((int16_t *)dataarray[j])[i]<<"\t";
+					break;
+				case BYTE:
+					byte = ((int8_t *)dataarray[j])[i];
+					cout<<(int16_t)byte<<"\t";
+					break;
+				default:
+					cout<<"unknown type"<<"\t";
+				}
+			}
+			cout<<endl;
+		}
+	}
+
+	void resize(uint64_t rownumber){
+
+		if(rownumber>this->rownumber){
+			for(Column col:columns){
+				data[col.name]->resize(rownumber*8);
+			}
+		}
+		this->rownumber = rownumber;
+	}
+	Batch(std::vector<Column> columns, uint64_t capacity){
+		this->columns = columns;
+		for(Column col:columns){
+			data[col.name] = new DataBuffer<unsigned char>(*getDefaultPool(),8*capacity);
+		}
+		this->capacity = capacity;
+		this->rownumber = 0;
+		eof = false;
+	}
+
+	~Batch(){
+		for(Column col:columns){
+			if(data[col.name]!=NULL){
+				delete data[col.name];
+			}
+
+		}
+	}
+
+
+};
 static uint64_t sortData(int listlength, int *data, int *toplist, float *percentage){
 	int min_index = 0;
 	int min_value = data[min_index];
@@ -52,6 +147,25 @@ static uint64_t sortData(int listlength, int *data, int *toplist, float *percent
 	}
 	return total;
 }
+
+struct Column{
+	std::string name;
+	TypeKind type;
+	Column(){name = "";type = INT;};
+	Column(std::string name,TypeKind type){
+		this->name = name;
+		this->type = type;
+	}
+	Column(const Column &column){
+		name = column.name;
+		type = column.type;
+	}
+
+	bool isRleType(){
+		return type!=DOUBLE&&type!=FLOAT;
+	}
+};
+
 struct EncodingInfo{
 	bool finalized;
 	int bitsize[65];
@@ -246,7 +360,7 @@ struct RLEInfo{
 		
 		os<<"average run length:	"<<(float)totalRunLength/totalnumber<<"\n";
 		if(repeatInfo->num!=0){
-			os<<"repeat:	"<<repeatInfo->num<<"("<<(repeatInfo->totalRunLength*100)/totalRunLength<<"%)\n\t"<<repeatInfo->getTopBitSize(orc::FLAGS_fetch_top)<<"\n\t"<<repeatInfo->getTopRunLength(FLAGS_fetch_top)<<"\n";
+			os<<"repeat:	"<<repeatInfo->num<<"("<<(repeatInfo->totalRunLength*100)/totalRunLength<<"%)\n\t"<<repeatInfo->getTopBitSize(FLAGS_fetch_top)<<"\n\t"<<repeatInfo->getTopRunLength(FLAGS_fetch_top)<<"\n";
 		}
 		if(directInfo->num!=0){
 			os<<"direct:	"<<directInfo->num<<"("<<(directInfo->totalRunLength*100)/totalRunLength<<"%)\n\t"<<directInfo->getTopBitSize(FLAGS_fetch_top)<<"\n\t"<<directInfo->getTopRunLength(FLAGS_fetch_top)<<"\n";

@@ -10,7 +10,8 @@
 #include "llvm-codegen.h"
 
 using namespace llvm;
-namespace orc{
+namespace tengdb{
+
 void initializeVectorization(LlvmCodeGen *gen);
 
 Value *unZigZag32(LlvmCodeGen *gen, IRBuilder<> &builder, Value *data, Value *zero, Value *one);

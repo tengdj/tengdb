@@ -1,22 +1,79 @@
 
-#include "../include/Reader.h"
-
 #include <memory>
 #include <iostream>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include "../include/config.h"
-#include "../include/OrcFile.h"
-#include "../include/RLE2.h"
-#include "../include/util.h"
-#include "../include/orc_proto.pb.h"
+#include "ORCReader.h"
+#include "config.h"
+#include "RLE2.h"
+#include "util.h"
+#include "orc_proto.pb.h"
 
 using namespace std;
 
 namespace orc{
 static const uint64_t DIRECTORY_SIZE_GUESS = 16 * 1024;
 
+
+FileInputStream::FileInputStream(std::string _filename) {
+      filename = _filename ;
+      file = open(filename.c_str(), O_RDONLY);
+      if (file == -1) {
+        std::cerr<<"Can't open " + filename +"\n";
+      }
+      struct stat fileStat;
+      if (fstat(file, &fileStat) == -1) {
+        std::cerr<<"Can't stat " + filename<<std::endl;
+      }
+      totalLength = static_cast<uint64_t>(fileStat.st_size);
+    }
+
+	FileInputStream::~FileInputStream(){
+    	close(file);
+    }
+
+    uint64_t FileInputStream::getLength(){
+      return totalLength;
+    }
+
+    uint64_t FileInputStream::getNaturalReadSize(){
+      return 128 * 1024;
+    }
+
+    void FileInputStream::read(void* buf,
+              uint64_t length,
+              uint64_t offset) {
+      if (!buf) {
+        std::cerr<<"Buffer is null"<<std::endl;
+      }
+      ssize_t bytesRead = pread(file, buf, length, static_cast<off_t>(offset));
+
+      if (bytesRead == -1) {
+        std::cerr<<"Bad read of " + filename<<std::endl;
+      }
+      if (static_cast<uint64_t>(bytesRead) != length) {
+        std::cerr<<" Short read of " + filename<<std::endl;
+      }
+    }
+
+    const std::string& FileInputStream::getName(){
+      return filename;
+    }
+
+
+  std::unique_ptr<FileInputStream> readLocalFile(const std::string& path) {
+    return std::unique_ptr<FileInputStream>(new FileInputStream(path));
+  }
+
+
 Reader::Reader(std::unique_ptr<FileInputStream> stream,
-		std::unique_ptr<orc::proto::PostScript> ps, std::unique_ptr<orc::proto::Footer> footer):
+		std::unique_ptr<proto::PostScript> ps, std::unique_ptr<proto::Footer> footer):
 		stream(std::move(stream)),
 		ps(std::move(ps)),
 		footer(std::move(footer)){
@@ -33,7 +90,7 @@ uint64_t Reader::rowsize(){
 
 }
 
-void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, DataBuffer<unsigned char> &buf, uint64_t &datasize){
+void Reader::readdata(int stripe, int column, Stream_Kind kind, DataBuffer<unsigned char> &buf, uint64_t &datasize){
 
 	proto::StripeInformation sinfo = footer->stripes(stripe);
 	uint64_t footerStart = sinfo.offset()+sinfo.indexlength()+sinfo.datalength();
@@ -58,10 +115,6 @@ void Reader::readdata(int stripe, int column, proto::Stream_Kind kind, DataBuffe
 		}
 		offset += stream.length();
 	}//end stream
-}
-
-proto::StripeInformation Reader::getStrips(int stripe){
-	return footer->stripes(stripe);
 }
 
 size_t Reader::getStripeSize(){

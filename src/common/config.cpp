@@ -9,7 +9,7 @@
 #include <thread>
 #include <unistd.h>
 
-namespace orc{
+namespace tengdb{
 
 	int type = 1;
 	std::string irpath = "./";
@@ -31,19 +31,19 @@ namespace orc{
 				char junk;
 
 				if (sscanf(argv[i], "-t=%d%c", &n, &junk) == 1) {
-					orc::FLAGS_threads_number = n;
+					FLAGS_threads_number = n;
 				} else if (strncmp(argv[i], "-v",2) == 0) {
-					orc::FLAGS_vectorization = true;
+					FLAGS_vectorization = true;
 				} else if(sscanf(argv[i], "-o=%d%c", &n, &junk) == 1) {
-					orc::FLAGS_use_optimized_module = n;
+					FLAGS_use_optimized_module = n;
 				} else if(sscanf(argv[i], "-O%d%c", &n, &junk) == 1) {
-					orc::FLAGS_optimization_level = n;
+					FLAGS_optimization_level = n;
 				} else if(sscanf(argv[i], "-g=%d%c", &n, &junk) == 1) {
-					orc::FLAGS_codegen = n;
+					FLAGS_codegen = n;
 				} else if (sscanf(argv[i], "-d=%d%c", &n, &junk) == 1) {
-					orc::double_per_round = n;
+					double_per_round = n;
 				} else if (sscanf(argv[i], "-ft=%d%c", &n, &junk) == 1) {
-					orc::FLAGS_fetch_top = n;
+					FLAGS_fetch_top = n;
 				}
 		}
 	}

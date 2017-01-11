@@ -15,7 +15,7 @@
 #include "HashTable.h"
 
 
-namespace orc{
+namespace tengdb{
 
 class Node{
 

@@ -31,12 +31,11 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include "../include/config.h"
-#include "../include/util.h"
-#include "object-pool.h"
+#include "config.h"
+#include "util.h"
+#include "MemoryPool.h"
 
 using namespace std;
-using namespace orc;
 /// Forward declare all llvm classes to avoid namespace pollution.
 namespace llvm {
   class AllocaInst;
@@ -61,7 +60,7 @@ namespace llvm {
 
 }
 
-namespace orc {
+namespace tengdb {
 
 class CodegenAnyVal;
 class SubExprElimination;
@@ -379,7 +378,7 @@ class LlvmCodeGen {
   llvm::Value* CastPtrToLlvmPtr(llvm::Type* type, const void* ptr);
 
   /// Returns the constant 'val' of 'type'
-  llvm::Value* GetIntConstant(orc::TypeKind type, int64_t val);
+  llvm::Value* GetIntConstant(TypeKind type, int64_t val);
 
   /// Returns true/false constants (bool type)
   llvm::Value* true_value() { return true_value_; }

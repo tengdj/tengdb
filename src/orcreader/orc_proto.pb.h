@@ -30,7 +30,7 @@
 #include <google/protobuf/unknown_field_set.h>
 // @@protoc_insertion_point(includes)
 
-namespace orc {
+namespace orc{
 namespace proto {
 
 // Internal implementation detail -- do not call these.
@@ -5960,8 +5960,8 @@ inline const FileTail* FileTail::internal_default_instance() {
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace proto
-}  // namespace orc
 
+}
 #ifndef SWIG
 namespace google {
 namespace protobuf {
@@ -5989,6 +5989,7 @@ inline const EnumDescriptor* GetEnumDescriptor< ::orc::proto::CompressionKind>()
 
 }  // namespace protobuf
 }  // namespace google
+
 #endif  // SWIG
 
 // @@protoc_insertion_point(global_scope)

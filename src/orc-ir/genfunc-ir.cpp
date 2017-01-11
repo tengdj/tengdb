@@ -25,12 +25,13 @@
 #include <algorithm>
 #include <iostream>
 
+#include "../../include/ORCColumnInfo.h"
 #include "llvm-codegen.h"
-#include "ColumnInfo.h"
 #include "functions-ir.h"
 #include "vectorization-ir.h"
 
 using namespace llvm;
+using namespace tengdb;
 
 namespace orc{
 
@@ -44,7 +45,7 @@ Function *genfunc_nextDirect(LlvmCodeGen *gen, ColumnInfo *cinfo, bool isinline)
 
 
 	EncodingInfo *info = cinfo->rleinfo->directInfo;
-	const int result_bitwidth = orc::bitofType(cinfo->column.type);
+	const int result_bitwidth = bitofType(cinfo->column.type);
 
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"next_"+cinfo->column.name+"_direct",IntegerType::getInt64Ty(gen->context()),isinline);
@@ -121,7 +122,7 @@ Function *genfunc_nextDirect(LlvmCodeGen *gen, ColumnInfo *cinfo, bool isinline)
 Function *genfunc_nextRepeat(LlvmCodeGen *gen, ColumnInfo *cinfo, bool isinline){
 
 	EncodingInfo *info = cinfo->rleinfo->repeatInfo;
-	const int result_bitwidth = orc::bitofType(cinfo->column.type);
+	const int result_bitwidth = bitofType(cinfo->column.type);
 
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"next_"+cinfo->column.name+"_repeat",IntegerType::getInt64Ty(gen->context()),isinline);
@@ -245,7 +246,7 @@ Function *genfunc_nextRepeat(LlvmCodeGen *gen, ColumnInfo *cinfo, bool isinline)
 Function *genfunc_nextDelta(LlvmCodeGen *gen,ColumnInfo *cinfo, bool isinline){
 
 	EncodingInfo *info = cinfo->rleinfo->deltaInfo;
-	const int result_bitwidth = orc::bitofType(cinfo->column.type);
+	const int result_bitwidth = bitofType(cinfo->column.type);
 
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"next_"+cinfo->column.name+"_delta",IntegerType::getInt64Ty(gen->context()),isinline);
@@ -589,7 +590,7 @@ Function *genfunc_nextPatched(LlvmCodeGen *gen, ColumnInfo *cinfo,bool isinline)
 
 
 	EncodingInfo *info = cinfo->rleinfo->patchedInfo;
-	const int result_bitwidth = orc::bitofType(cinfo->column.type);
+	const int result_bitwidth = bitofType(cinfo->column.type);
 
 	IRBuilder<> builder(gen->context());
 	LlvmCodeGen::FnPrototype proto(gen,"next_"+cinfo->column.name+"_patched",IntegerType::getInt64Ty(gen->context()),isinline);

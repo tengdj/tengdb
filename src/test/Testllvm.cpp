@@ -15,7 +15,7 @@
 
 using namespace llvm;
 using namespace std;
-using namespace orc;
+using namespace tengdb;
 
 Value *_mm_shuffle_epi8(LlvmCodeGen *gen, IRBuilder<> &builder, Value *byte_value, Value *mask_value){
 	 VectorType* type_8_16 = VectorType::get(IntegerType::get(gen->context(), 8), 16);
@@ -141,7 +141,7 @@ Function *getfunc(LlvmCodeGen *gen){
 }
 int main(int argc, char **argv){
 
-	orc::parseGlobalFlag(argc,argv);
+	parseGlobalFlag(argc,argv);
 	unsigned char byte[32];
 	byte[0] = (unsigned char)20;
 	byte[1] = (unsigned char)113;

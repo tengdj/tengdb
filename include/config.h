@@ -13,7 +13,7 @@
 #include <fstream>
 
 using namespace std;
-namespace orc{
+namespace tengdb{
 
 extern int type;
 extern std::string irpath;

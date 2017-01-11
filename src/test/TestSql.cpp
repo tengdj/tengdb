@@ -12,9 +12,11 @@
 #include "llvm-codegen.h"
 #include "Node.h"
 #include "../frontend/sql/statements.h"
-using namespace hsql;
-
 #include <fstream>
+
+using namespace hsql;
+using namespace tengdb;
+
 
 int main(int argc, char *argv[]) {
 

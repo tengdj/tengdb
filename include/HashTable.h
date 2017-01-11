@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-namespace orc{
+namespace tengdb{
 
 class HashEntry {
 

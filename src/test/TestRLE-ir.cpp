@@ -5,10 +5,15 @@
  *      Author: teng
  */
 
-#include "../include/Reader.h"
-#include "../include/functions-ir.h"
-#include "../include/RLE2.h"
+#include "functions-ir.h"
+#include "RLE2.h"
+#include "ORCReader.h"
+
 #include <iostream>
+
+using namespace tengdb;
+using namespace orc;
+
 
 int  main(int argc, char **args){
 
@@ -34,7 +39,7 @@ int  main(int argc, char **args){
 		exit(1);
 		}
 	  }
-	proto::Stream_Kind kind;
+	Stream_Kind kind;
 	string filepath;
 	bool issigned;
 	int column = 1;
@@ -45,7 +50,7 @@ int  main(int argc, char **args){
 	//filepath = "/home/teng/orcfile/testdelta/000000_0";kind = proto::Stream_Kind_DATA;issigned=true;colname="delta";
 	//filepath = "/home/teng/orcfile/testdecimal/000000_0";kind = proto::Stream_Kind_SECONDARY;issigned=false;colname="decimal";
 	//filepath = "/home/teng/orcfile/testdictionary/000000_0";kind = proto::Stream_Kind_DATA;issigned = false;colname="dictionary";
-	filepath = "/home/teng/orcfile/allsmall/000000_0";kind = proto::Stream_Kind_DATA;issigned = true;column = 1;colname = "l_partkey";
+	filepath = "/home/teng/orcfile/allsmall/000000_0";kind = Stream_Kind_DATA;issigned = true;column = 1;colname = "l_partkey";
 	//filepath = "/home/teng/orcfile/testpatched/000000_0";kind = proto::Stream_Kind_DATA;issigned=false;colname="patched";;
 
 
@@ -60,7 +65,7 @@ int  main(int argc, char **args){
 	DataBuffer<int64_t> resultbuf(*mempool,100);
 
 	if(local){
-		orc::LlvmCodeGen::LoadFromFile(&pool,"./testutil_opt.ll","testutil",&gen);
+		LlvmCodeGen::LoadFromFile(&pool,"./testutil_opt.ll","testutil",&gen);
 	}else{
 		gen = new LlvmCodeGen(&pool,"testutil");
 		ColumnInfo cinfo(colname,INT);
@@ -68,7 +73,7 @@ int  main(int argc, char **args){
 			uint64_t datasize;
 			reader->readdata(i,column,kind, buf,datasize);
 			RLE2<int64_t,uint64_t> *rle = new RLE2<int64_t,uint64_t>(buf.data(), datasize, issigned);
-			uint64_t nrows = reader->getStrips(i).numberofrows();
+			uint64_t nrows = reader->getNumofRows(i);
 			if(resultbuf.size()<nrows)
 			resultbuf.resize(nrows);
 
@@ -102,8 +107,7 @@ int  main(int argc, char **args){
 
 		uint64_t datasize;
 
-		proto::StripeInformation sinfo = reader->getStrips(i);
-		uint64_t nrows = sinfo.numberofrows();
+		uint64_t nrows = reader->getNumofRows(i);
 		uint64_t index=0;
 		uint64_t offset = 0;
 		reader->readdata(i,column,kind, buf,datasize);
