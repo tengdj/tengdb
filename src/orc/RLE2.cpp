@@ -16,6 +16,7 @@
 #include "util.h"
 #include "MemoryPool.h"
 #include "config.h"
+#include "ORCColumnInfo.h"
 
 #define MIN_REPEAT 3
 
@@ -211,7 +212,7 @@ uint64_t RLE2<I,UI>::readLongs(I *result, uint64_t offset, uint64_t len, uint64_
 	int foldrun = len/batch;
 	int bytesize = fb/8;
 
-	if(orc::FLAGS_vectorization&&foldrun>0&&((fb>=8&&fb%8==0)||(fb<8&&8%fb==0))){
+	if(FLAGS_vectorization&&foldrun>0&&((fb>=8&&fb%8==0)||(fb<8&&8%fb==0))){
 		if(sizeof(I)==4){
 			//cout<<batch<<" "<<foldrun<<" "<<bytesize<<endl;
 			if(bytesize==4){
@@ -457,7 +458,7 @@ uint64_t RLE2<I,UI>::nextShortRepeats(I *result, uint64_t offset,EncodingInfo *i
 	}
 
 #ifdef __AVX2__
-	if(orc::FLAGS_vectorization&&sizeof(I)==4){
+	if(FLAGS_vectorization&&sizeof(I)==4){
 		__m256i repeated_value = _mm256_set1_epi32(value);
 		_mm256_storeu_si256((__m256i *)&result[pos], repeated_value);
 		pos+=8;
@@ -594,7 +595,7 @@ uint64_t RLE2<I,UI>::nextDelta(I *result, uint64_t offset, EncodingInfo *info){
 	    // add fixed deltas to adjacent values
 		if(deltaBase!=0){
 #ifdef __AVX2__
-//			if(orc::FLAGS_vectorization&&sizeof(I)==4){
+//			if(FLAGS_vectorization&&sizeof(I)==4){
 //				pos -= 1;
 //				int fold = runLength/8;
 //				__m256i repeated_value = _mm256_set1_epi32(firstValue);
@@ -610,7 +611,7 @@ uint64_t RLE2<I,UI>::nextDelta(I *result, uint64_t offset, EncodingInfo *info){
 		}else{
 #ifdef __AVX2__
 
-			if(orc::FLAGS_vectorization&&sizeof(I)==4){
+			if(FLAGS_vectorization&&sizeof(I)==4){
 				pos -= 1;
 				int fold = runLength/8;
 				__m256i repeated_value = _mm256_set1_epi32(firstValue);
@@ -648,7 +649,7 @@ uint64_t RLE2<I,UI>::nextDelta(I *result, uint64_t offset, EncodingInfo *info){
 
 #ifdef	__AVX2__
 
-	    	if(orc::FLAGS_vectorization&&sizeof(I)==4&&runLength>8){
+	    	if(FLAGS_vectorization&&sizeof(I)==4&&runLength>8){
 
 
 			__m256i permute1 = _mm256_set_epi32(6,5,4,3,2,1,0,0);

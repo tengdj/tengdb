@@ -38,8 +38,6 @@ int main(int argc, char *argv[]) {
 		} else if (strncmp(argv[i], "-f=",3) == 0) {
 			filepath = argv[i]+3;
 			fromfile = true;
-		} else if (strncmp(argv[i], "-p",2) == 0) {
-			printbatch = true;
 		}
 	}
 
@@ -52,11 +50,11 @@ int main(int argc, char *argv[]) {
 
     // parse a given query
     hsql::SQLParserResult* result = hsql::SQLParser::parseSQLString(query);
-
     // check whether the parsing was successful
     if (result->isValid) {
         for (hsql::SQLStatement* stmt : result->statements) {
 			if(stmt->type()==hsql::StatementType::kStmtSelect){
+			    printStatementInfo(stmt);
 				SelectStatement *selectstmt = reinterpret_cast<SelectStatement *>(stmt);
 				ScanNode *node = reinterpret_cast<ScanNode *>(selectstmt->codegen());
 				Batch *batch;
@@ -64,9 +62,6 @@ int main(int argc, char *argv[]) {
 					batch = node->nextBatch();
 					if(batch->eof){
 						break;
-					}
-					if(printbatch){
-						batch->print();
 					}
 				}while(true);
 				delete node;

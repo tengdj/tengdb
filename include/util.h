@@ -144,5 +144,62 @@ inline bool exists_module_file (const std::string& name) {
   return (stat ((name+"_opt.ll").c_str(), &buffer) == 0);
 }
 
+const static bool littleendian = true;
+
+
+template<typename T>
+inline int Encode(char* buf, T value) {
+    memcpy(buf, &value, sizeof(T));
+    return sizeof(T);;
+}
+
+template<typename T>
+inline int Decode(char* buf, T *value) {
+	memcpy(value, buf, sizeof(T));
+	return sizeof(T);
+}
+
+template<typename T>
+inline int EncodeArray(char *byte, T *data, int length){
+
+	for(int i=0;i<length;i++){
+		Encode(byte,data[i]);
+		byte += sizeof(T);
+	}
+	return length*sizeof(T);
+
+}
+
+template<typename T>
+inline int DecodeArray(char *byte, T *data, int length){
+
+	for(int i=0;i<length;i++){
+		Decode(byte,data);
+		byte += sizeof(T);
+		data++;
+
+	}
+	return length*sizeof(T);
+
+}
+
+inline int EncodeString(char* buf, std::string str) {
+	Encode(buf,str.size());
+	buf += 4;
+	memcpy(buf,str.data(),str.size());
+	return 4+str.size();
+}
+
+inline int DecodeString(char* buf, string &str) {
+	int length;
+	Decode(buf,&length);
+	buf += 4;
+	char s[length];
+	memcpy(s,buf,length);
+	str = std::string(s,length);;
+
+	return 4+length;
+}
+
 }
 #endif /* INCLUDE_UTIL_H_ */

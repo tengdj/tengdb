@@ -10,7 +10,7 @@
 #include "util.h"
 #include "vectorization-ir.h"
 #include "llvm-codegen.h"
-
+#include "ORCColumnInfo.h"
 
 using namespace orc;
 namespace tengdb{
@@ -95,7 +95,7 @@ private:
 
 public:
 
-	Table(std::string table, std::string path, std::vector<Column> columns){
+	Table(std::string tablename, std::string path, std::vector<Column> columns){
 		this->tablename = tablename;
 		for(int i=0;i<columns.size();i++){
 			colmap[columns[i].name] = std::make_pair(i+1,columns[i].type);

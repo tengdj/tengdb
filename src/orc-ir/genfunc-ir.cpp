@@ -25,7 +25,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "../../include/ORCColumnInfo.h"
+#include "ORCColumnInfo.h"
 #include "llvm-codegen.h"
 #include "functions-ir.h"
 #include "vectorization-ir.h"

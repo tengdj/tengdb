@@ -21,6 +21,7 @@ namespace tengdb{
 	int FLAGS_fetch_top = 5;
 	bool FLAGS_use_optimized_module = true;
 	int FLAGS_optimization_level = 3;
+	bool FLAGS_print_batch = false;
 	void parseGlobalFlag(int argc, char **argv){
 		for (int i = 1; i < argc; i++) {
 				double d;
@@ -44,6 +45,8 @@ namespace tengdb{
 					double_per_round = n;
 				} else if (sscanf(argv[i], "-ft=%d%c", &n, &junk) == 1) {
 					FLAGS_fetch_top = n;
+				} else if (strncmp(argv[i], "-p",2) == 0) {
+					FLAGS_print_batch = true;
 				}
 		}
 	}

@@ -20,6 +20,7 @@
 #define MEMORYPOOL_HH_
 
 #include <memory>
+#include <vector>
 
 namespace tengdb {
 

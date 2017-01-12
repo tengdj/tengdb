@@ -29,7 +29,7 @@ Node *SelectStatement::codegen(){
 
 	vector<Column> columnlist = this->selectedFields();
 
-	Table *table = orc::getTable(this->fromTable->getName());
+	Table *table = getTable(this->fromTable->getName());
 
 	Node *node = new ScanNode(table,columnlist);
 	reinterpret_cast<ScanNode *>(node)->prepare();

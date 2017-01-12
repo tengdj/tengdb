@@ -8,11 +8,16 @@
 #ifndef READER_HH_
 #define READER_HH_
 
-#include "orc_proto.pb.h"
+//#include "orc_proto.pb.h"
 #include "MemoryPool.h"
 
 namespace orc{
 
+namespace proto{
+
+class PostScript;
+class Footer;
+}
 
 enum Stream_Kind {
   Stream_Kind_PRESENT = 0,
@@ -55,12 +60,13 @@ class Reader{
 	std::unique_ptr<proto::Footer> footer;
 	std::unique_ptr<FileInputStream> stream;
 
+
 public:
 	Reader(std::unique_ptr<FileInputStream> stream,std::unique_ptr<proto::PostScript> ps, std::unique_ptr<proto::Footer> footer);
 	~Reader();
 	void readdata(int stripe, int column, Stream_Kind kind, tengdb::DataBuffer<unsigned char> &, uint64_t &);
-	uint64_t rowsize();
-	int getNumofRows(int stripe_num);
+	uint64_t getNumofRows();
+	uint64_t getNumofRows(int stripe_num);
 	size_t getStripeSize();
 
 };

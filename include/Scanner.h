@@ -14,6 +14,7 @@
 #include <mutex>
 #include "ORCReader.h"
 #include "llvm-codegen.h"
+#include "ORCColumnInfo.h"
 
 namespace tengdb{
 

@@ -11,7 +11,7 @@
 
 
 using namespace llvm;
-using namespace orc;
+using namespace tengdb;
 
 namespace hsql {
     typedef enum {
@@ -107,7 +107,7 @@ namespace hsql {
 					expr->addColumn(&columns);
 				}
 			}
-			Table *table = orc::getTable(std::string(this->fromTable->getName()));
+			Table *table = getTable(std::string(this->fromTable->getName()));
 			std::vector<Column> columnlist;
 			for(std::map<std::string, bool>::iterator i = columns.begin();i!=columns.end();i++){
 				columnlist.push_back(Column(i->first,table->getTypeKind(i->first)));

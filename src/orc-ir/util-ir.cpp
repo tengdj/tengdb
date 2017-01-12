@@ -25,8 +25,8 @@
 #include <memory>
 #include <iostream>
 
-#include "../../include/ORCColumnInfo.h"
-#include "../../include/ORCReader.h"
+#include "ORCColumnInfo.h"
+#include "ORCReader.h"
 #include "config.h"
 #include "RLE2.h"
 #include "util.h"

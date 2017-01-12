@@ -84,10 +84,17 @@ Reader::~Reader(){
 
 }
 
-uint64_t Reader::rowsize(){
+inline proto::Stream_Kind convertStreamKind(Stream_Kind kind){
+	return (proto::Stream_Kind)((int)kind);
+}
+
+uint64_t Reader::getNumofRows(){
 
 	return footer->numberofrows();
 
+}
+uint64_t Reader::getNumofRows(int stripe){
+	return footer->stripes(stripe).numberofrows();
 }
 
 void Reader::readdata(int stripe, int column, Stream_Kind kind, DataBuffer<unsigned char> &buf, uint64_t &datasize){
@@ -104,7 +111,7 @@ void Reader::readdata(int stripe, int column, Stream_Kind kind, DataBuffer<unsig
 	for(int i = 0; i < stripefooter.streams_size(); ++i) {
 		const proto::Stream& stream = stripefooter.streams(i);
 		if (stream.has_kind() &&
-				stream.kind() == kind &&
+				stream.kind() == convertStreamKind(kind) &&
 				stream.column() == static_cast<uint64_t>(column)) {
 			datasize = stream.length();
 			if(buf.capacity()<datasize){

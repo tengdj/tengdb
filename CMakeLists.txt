@@ -15,6 +15,10 @@ ADD_SUBDIRECTORY(src)
 
 
 
+configure_file(sql/q1.sql q1.sql COPYONLY)
+configure_file(sql/q3.sql q3.sql COPYONLY)
+configure_file(sql/q6.sql q6.sql COPYONLY)
+configure_file(sql/q12.sql q12.sql COPYONLY)
 
 configure_file(sql/rle.sql rle.sql COPYONLY)
 configure_file(sql/int.sql int.sql COPYONLY)

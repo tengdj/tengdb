@@ -16,7 +16,7 @@
 
 using namespace llvm;
 using namespace std;
-using namespace orc;
+using namespace tengdb;
 
 
 
@@ -132,7 +132,7 @@ Function *getfunc256(LlvmCodeGen *gen){
 
 int main(int argc, char **argv){
 
-	orc::parseGlobalFlag(argc,argv);
+	parseGlobalFlag(argc,argv);
 	unsigned char byte[32];
 	byte[0] = (unsigned char)20;
 	byte[1] = (unsigned char)113;

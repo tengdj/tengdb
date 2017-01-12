@@ -13,9 +13,12 @@
 #include "Scanner.h"
 #include "functions-ir.h"
 #include "RLE2.h"
+#include "ORCColumnInfo.h"
 using namespace std;
 using namespace tengdb;
-namespace orc{
+using namespace orc;
+
+namespace tengdb{
 
 ORCScanner::ORCScanner(Table *table,std::vector<Column> columns){
 	this->table = table;
@@ -174,6 +177,7 @@ Batch * ORCScanner::nextBatch(){
 		}
 
 	}
+	batch->print();
 
 	curStripe++;
 	return batch;
@@ -207,22 +211,35 @@ ORCScanner::~ORCScanner(){
 	if(table->unreg()==0){
 		if(FLAGS_codegen){
 			bool genchanged = false;
+			char *buf=new char[100000];;
+			int offset = 0;
 			for(Column col:columns){
 				if(col.isRleType()&&!gen->hasFunction("next_"+col.name)){
 					ColumnInfo *colinfo = ORCScanner::colinfos_global[col.name];
-					colinfo->finalize();
-					cout<<col.name<<endl;
-					cout<<colinfo->rleinfo->toString()<<endl;
-					genfunc_next(gen,colinfo);
+					offset += colinfo->encodeTo(buf+offset);
 					delete colinfo;
-					genchanged = true;
 				}
 			}
+
+			offset = 0;
+			for(Column col:columns){
+				ColumnInfo *tmpinfo = new ColumnInfo();
+				offset += tmpinfo->decodeFrom(buf+offset);
+				if(col.isRleType()&&!gen->hasFunction("next_"+col.name)){
+					cout<<col.name<<endl;
+					cout<<tmpinfo->rleinfo->toString()<<endl;
+					genfunc_next(gen,tmpinfo);
+					genchanged = true;
+				}
+				delete tmpinfo;
+			}
+
 			if(genchanged){
 				//gen->EnableOptimizations(false);
 				//gen->setOptimizationLevel(0);
 				gen->FinalizeModule();
 			}
+			delete buf;
 		}
 		ORCScanner::colinfos_global.clear();
 	}

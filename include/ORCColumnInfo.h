@@ -8,10 +8,12 @@
 #ifndef SRC_COLUMNINFO_H_
 #define SRC_COLUMNINFO_H_
 
-#include "util.h"
 #include <sstream>
 #include <ostream>
 #include <iostream>
+#include <stdlib.h>
+#include <assert.h>
+
 #include "util.h"
 
 using namespace std;
@@ -20,98 +22,6 @@ using namespace tengdb;
 namespace orc{
 
 
-
-
-struct Batch{
-
-	uint64_t counter = 0;
-
-	std::map<std::string, DataBuffer<unsigned char> *> data;
-	std::vector<Column> columns;
-	uint64_t rownumber;
-	uint64_t capacity;
-
-	bool eof;
-
-	void print(){
-		if(counter==0){
-			cout<<"#\t";
-			for(Column col:columns){
-				cout<<col.name<<"\t";
-			}
-			cout<<endl;
-		}
-
-		void *dataarray[columns.size()];
-		for(int i=0;i<columns.size();i++){
-			dataarray[i] = (void *)data[columns[i].name]->data();
-		}
-		for(uint64_t i=0;i<rownumber;i++){
-			cout<<++counter<<"\t";
-			int8_t byte;
-			for(int j=0;j<columns.size();j++){
-
-				switch(columns[j].type){
-				case DOUBLE:
-					cout<<((double *)dataarray[j])[i]<<"\t";
-					break;
-				case FLOAT:
-					cout<<((float *)dataarray[j])[i]<<"\t";
-					break;
-				case LONG:
-					cout<<((int64_t *)dataarray[j])[i]<<"\t";
-					break;
-				case STRING:
-				case INT:
-				case VARCHAR:
-					cout<<((int32_t *)dataarray[j])[i]<<"\t";
-					break;
-				case DATE:
-				case SHORT:
-					cout<<((int16_t *)dataarray[j])[i]<<"\t";
-					break;
-				case BYTE:
-					byte = ((int8_t *)dataarray[j])[i];
-					cout<<(int16_t)byte<<"\t";
-					break;
-				default:
-					cout<<"unknown type"<<"\t";
-				}
-			}
-			cout<<endl;
-		}
-	}
-
-	void resize(uint64_t rownumber){
-
-		if(rownumber>this->rownumber){
-			for(Column col:columns){
-				data[col.name]->resize(rownumber*8);
-			}
-		}
-		this->rownumber = rownumber;
-	}
-	Batch(std::vector<Column> columns, uint64_t capacity){
-		this->columns = columns;
-		for(Column col:columns){
-			data[col.name] = new DataBuffer<unsigned char>(*getDefaultPool(),8*capacity);
-		}
-		this->capacity = capacity;
-		this->rownumber = 0;
-		eof = false;
-	}
-
-	~Batch(){
-		for(Column col:columns){
-			if(data[col.name]!=NULL){
-				delete data[col.name];
-			}
-
-		}
-	}
-
-
-};
 static uint64_t sortData(int listlength, int *data, int *toplist, float *percentage){
 	int min_index = 0;
 	int min_value = data[min_index];
@@ -198,6 +108,67 @@ struct EncodingInfo{
 		maxbitsize = 0;
 	}
 
+	int encodeTo(char *data){
+		int offset = 0;
+		offset += tengdb::Encode(data+offset,(int)issigned);
+		offset += tengdb::Encode(data+offset,num);
+		offset += tengdb::Encode(data+offset, totalRunLength);
+		if(num!=0){
+			for(int i=0;i<65;i++){
+				if(bitsize[i]!=0){
+					offset += tengdb::Encode(data+offset,i);
+					offset += tengdb::Encode(data+offset,bitsize[i]);
+				}
+			}
+			offset += tengdb::Encode(data+offset,-1);
+			for(int i=0;i<513;i++){
+				if(runLength[i]!=0){
+					offset += tengdb::Encode(data+offset,i);
+					offset += tengdb::Encode(data+offset,runLength[i]);
+				}
+			}
+			offset += tengdb::Encode(data+offset,-1);
+
+			//offset += tengdb::EncodeArray(data+offset,bitsize,65);
+			//offset += tengdb::EncodeArray(data+offset,runLength,513);
+		}
+
+		return offset;
+	}
+
+	int decodeFrom(char *data){
+		int offset = 0;
+		offset += tengdb::Decode(data+offset,(int *)&issigned);
+		offset += tengdb::Decode(data+offset,&num);
+		offset += tengdb::Decode(data+offset,&totalRunLength);
+		if(num!=0){
+			int loc = 0;
+			int v = 0;
+
+			while(true){
+				offset += tengdb::Decode(data+offset,&loc);
+				if(loc==-1){
+					break;
+				}
+				offset += tengdb::Decode(data+offset,&v);
+				bitsize[loc] = v;
+			}
+
+			while(true){
+				offset += tengdb::Decode(data+offset,&loc);
+				if(loc==-1){
+					break;
+				}
+				offset += tengdb::Decode(data+offset,&v);
+				runLength[loc] = v;
+			}
+			//offset += tengdb::DecodeArray(data+offset,bitsize,65);
+			//offset += tengdb::DecodeArray(data+offset,runLength,513);
+		}
+
+		return offset;
+	}
+
 	void finalize(){
 		finalized = true;
 		sortData(65,bitsize,top_bitSize,top_bitSize_percent);
@@ -208,8 +179,6 @@ struct EncodingInfo{
 				break;
 			}
 		}
-
-
 	}
 
 	std::string getTopBitSize(int top){
@@ -237,7 +206,6 @@ struct EncodingInfo{
 			}
 		}
 		return os.str();
-
 	}
 
 	bool isBitSizeFixed(){
@@ -261,6 +229,7 @@ struct EncodingInfo{
 				return i;
 			}
 		}
+		return 0;
 	}
 
 
@@ -284,6 +253,7 @@ struct RLEInfo{
 	EncodingInfo *repeatInfo;
 	EncodingInfo *patchedInfo;
 	EncodingInfo *deltaInfo;
+
 
 	bool hasDirect(){
 		return directInfo&&directInfo->num>0;
@@ -309,6 +279,29 @@ struct RLEInfo{
 
 	}
 
+
+	int encodeTo(char *data){
+
+		int offset = 0;
+		offset += directInfo->encodeTo(data+offset);
+		offset += repeatInfo->encodeTo(data+offset);
+		offset += patchedInfo->encodeTo(data+offset);
+		offset += deltaInfo->encodeTo(data+offset);
+		return offset;
+
+	}
+
+	int decodeFrom(char *data){
+
+		int offset = 0;
+		offset += directInfo->decodeFrom(data+offset);
+		offset += repeatInfo->decodeFrom(data+offset);
+		offset += patchedInfo->decodeFrom(data+offset);
+		offset += deltaInfo->decodeFrom(data+offset);
+		finalize();
+		return offset;
+
+	}
 	~RLEInfo(){
 
 		delete directInfo;
@@ -375,24 +368,53 @@ struct RLEInfo{
 		return os.str();
 	}
 };
+
 struct ColumnInfo{
 
 	Column column;
 	RLEInfo *rleinfo;
 
-	ColumnInfo(std::string colname, TypeKind kind){
-		this->column.name = colname;
-		this->column.type = kind;
+	void init(){
 		if(column.isRleType()){
 			rleinfo = new RLEInfo();
-			if(kind==STRING||kind==VARCHAR){
+			if(column.type==STRING||column.type==VARCHAR){
 				rleinfo->unsign();
 			}
 		}else{
 			rleinfo = NULL;
 		}
+	}
+	ColumnInfo(std::string colname, TypeKind kind){
+		this->column.name = colname;
+		this->column.type = kind;
+		init();
+	}
 
+	ColumnInfo(){
+		rleinfo = NULL;
+	};
 
+	int encodeTo(char *data){
+
+		int offset = 0;
+		offset += tengdb::EncodeString(data+offset,column.name);
+		offset += tengdb::Encode(data+offset,(int)column.type);
+		if(column.isRleType()){
+			offset += rleinfo->encodeTo(data+offset);
+		}
+		return offset;
+	}
+
+	int decodeFrom(char *data){
+		int offset = 0;
+		offset += tengdb::DecodeString(data+offset,column.name);
+		offset += tengdb::Decode(data+offset,(int *)&column.type);
+
+		init();
+		if(column.isRleType()){
+			offset += rleinfo->decodeFrom(data+offset);
+		}
+		return offset;
 	}
 
 	~ColumnInfo(){
@@ -413,6 +435,103 @@ struct ColumnInfo{
 
 };
 
+
+
+
+
+struct Batch{
+
+	uint64_t counter = 0;
+
+	std::map<std::string, DataBuffer<unsigned char> *> data;
+	std::vector<Column> columns;
+	uint64_t rownumber;
+	uint64_t capacity;
+
+	bool eof;
+
+	void print(){
+		if(!FLAGS_print_batch){
+			return;
+		}
+		if(counter==0){
+			cout<<"#\t";
+			for(Column col:columns){
+				cout<<col.name<<"\t";
+			}
+			cout<<endl;
+		}
+
+		void *dataarray[columns.size()];
+		for(int i=0;i<columns.size();i++){
+			dataarray[i] = (void *)data[columns[i].name]->data();
+		}
+		for(uint64_t i=0;i<rownumber;i++){
+			cout<<++counter<<"\t";
+			int8_t byte;
+			for(int j=0;j<columns.size();j++){
+
+				switch(columns[j].type){
+				case DOUBLE:
+					cout<<((double *)dataarray[j])[i]<<"\t";
+					break;
+				case FLOAT:
+					cout<<((float *)dataarray[j])[i]<<"\t";
+					break;
+				case LONG:
+					cout<<((int64_t *)dataarray[j])[i]<<"\t";
+					break;
+				case STRING:
+				case INT:
+				case VARCHAR:
+					cout<<((int32_t *)dataarray[j])[i]<<"\t";
+					break;
+				case DATE:
+				case SHORT:
+					cout<<((int16_t *)dataarray[j])[i]<<"\t";
+					break;
+				case BYTE:
+					byte = ((int8_t *)dataarray[j])[i];
+					cout<<(int16_t)byte<<"\t";
+					break;
+				default:
+					cout<<"unknown type"<<"\t";
+				}
+			}
+			cout<<endl;
+		}
+	}
+
+	void resize(uint64_t rownumber){
+
+		if(rownumber>this->rownumber){
+			for(Column col:columns){
+				data[col.name]->resize(rownumber*8);
+			}
+		}
+		this->rownumber = rownumber;
+	}
+	Batch(std::vector<Column> columns, uint64_t capacity){
+		this->columns = columns;
+		for(Column col:columns){
+			data[col.name] = new DataBuffer<unsigned char>(*getDefaultPool(),8*capacity);
+		}
+		this->capacity = capacity;
+		this->rownumber = 0;
+		eof = false;
+	}
+
+	~Batch(){
+		for(Column col:columns){
+			if(data[col.name]!=NULL){
+				delete data[col.name];
+			}
+
+		}
+	}
+
+
+};
 
 }
 
